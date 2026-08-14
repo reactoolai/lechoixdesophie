@@ -152,29 +152,38 @@
         <p id="catalogCount" class="catalog-count"></p>
       </div>
     </div>
+    <div class="filter-overlay" id="filterOverlay"></div>
     <div class="wrap catalog-layout">
       <aside class="filters" id="filterSidebar">
         <div class="filter-group">
           <div class="filter-title">Disponibilité</div>
-          <label class="filter-opt"><input type="checkbox" id="filterInStock"> <span>En stock seulement</span></label>
+          <div class="filter-content">
+            <label class="filter-opt"><input type="checkbox" id="filterInStock"> <span>En stock seulement</span></label>
+          </div>
         </div>
         <div class="filter-group">
           <div class="filter-title">Couleurs</div>
-          <div id="filterColors" class="filter-chips"></div>
+          <div class="filter-content">
+            <div id="filterColors" class="filter-chips"></div>
+          </div>
         </div>
         <div class="filter-group">
           <div class="filter-title">Tailles</div>
-          <div id="filterSizes" class="filter-chips"></div>
+          <div class="filter-content">
+            <div id="filterSizes" class="filter-chips"></div>
+          </div>
         </div>
         <div class="filter-group">
           <div class="filter-title">Prix</div>
-          <div class="filter-price-row">
-            <input type="number" id="priceMin" placeholder="Min $" class="price-input">
-            <span>—</span>
-            <input type="number" id="priceMax" placeholder="Max $" class="price-input">
+          <div class="filter-content">
+            <div class="filter-price-row">
+              <input type="number" id="priceMin" placeholder="Min $" class="price-input">
+              <span>—</span>
+              <input type="number" id="priceMax" placeholder="Max $" class="price-input">
+            </div>
           </div>
         </div>
-        <button class="btn-outline filter-reset" id="resetFilters">Réinitialiser</button>
+        <button class="btn-outline filter-reset" id="resetFilters">Réinitialiser les filtres</button>
       </aside>
       <div class="catalog-main">
         <div class="catalog-toolbar">

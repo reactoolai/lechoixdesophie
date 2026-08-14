@@ -291,7 +291,19 @@ function setupEvents() {
   });
 
   $('#filterToggle')?.addEventListener('click', () => {
-    $('#filterSidebar').classList.toggle('open');
+    $('#filterSidebar').classList.add('open');
+    $('#filterOverlay').classList.add('show');
+  });
+
+  $('#filterOverlay')?.addEventListener('click', () => {
+    $('#filterSidebar').classList.remove('open');
+    $('#filterOverlay').classList.remove('show');
+  });
+
+  document.querySelectorAll('.filter-title').forEach((title) => {
+    title.addEventListener('click', () => {
+      title.closest('.filter-group').classList.toggle('collapsed');
+    });
   });
 
   $('#searchInput')?.addEventListener('input', (e) => {
