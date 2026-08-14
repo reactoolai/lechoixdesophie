@@ -242,7 +242,6 @@ function buildProductCard(p) {
     </div>
     <div class="prod-info">
       <div class="prod-nom">${p.description || ''}</div>
-      <div class="prod-meta">${p.fournisseur || ''}${p.season ? ' · ' + p.season : ''}</div>
       <div class="prod-prix">${formatPrice(p.price)}</div>
     </div>
   `;
