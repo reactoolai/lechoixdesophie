@@ -4,6 +4,11 @@ import { supabase } from './supabase.js';
 
 /* ---------- État ---------- */
 let currentUser = null;
+let currentCategory = 'Nouveautés';
+let currentPage = 0;
+const PAGE_SIZE = 12;
+let allProducts = [];
+let filteredProducts = [];
 
 /* ---------- Helpers DOM ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -17,6 +22,125 @@ const ce = (tag, attrs = {}, children = []) => {
   children.forEach((c) => el.append(c));
   return el;
 };
+
+/* ---------- Catalogue: chargement des produits ---------- */
+async function loadProducts() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('date_created', { ascending: false });
+
+  if (error) {
+    console.error('Erreur chargement produits:', error);
+    $('#productGrid').innerHTML = '<div class="loading-msg">Erreur lors du chargement des produits.</div>';
+    return;
+  }
+
+  allProducts = data || [];
+  applyFilter();
+}
+
+function applyFilter() {
+  if (currentCategory === 'Nouveautés') {
+    filteredProducts = allProducts.filter((p) => p.is_new);
+  } else {
+    filteredProducts = allProducts.filter((p) => p.category === currentCategory);
+  }
+  currentPage = 0;
+  renderProducts();
+}
+
+function renderProducts() {
+  const grid = $('#productGrid');
+  const title = $('#catalogTitle');
+  title.textContent = currentCategory === 'Nouveautés' ? 'Nouveautés' : currentCategory;
+
+  if (filteredProducts.length === 0) {
+    grid.innerHTML = '<div class="loading-msg">Aucun produit dans cette catégorie.</div>';
+    $('#loadMoreWrap').style.display = 'none';
+    return;
+  }
+
+  const start = 0;
+  const end = (currentPage + 1) * PAGE_SIZE;
+  const visible = filteredProducts.slice(start, end);
+
+  grid.innerHTML = '';
+  visible.forEach((p) => {
+    const imgSrc = p.images && p.images.length > 0
+      ? `/images/products/${p.images[0]}`
+      : '';
+    const imgSrc2 = p.images && p.images.length > 1
+      ? `/images/products/${p.images[1]}`
+      : imgSrc;
+
+    const card = ce('div', { class: 'prod' });
+    card.innerHTML = `
+      <div class="ph">
+        <img src="${imgSrc}" alt="${p.description}" loading="lazy"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'440\\'><rect fill=\\'%23F3ECDF\\' width=\\'400\\' height=\\'440\\'/><text x=\\'50%\\' y=\\'50%\\' text-anchor=\\'middle\\' fill=\\'%238A8377\\' font-size=\\'14\\'>Image à venir</text></svg>'">
+        ${p.is_new ? '<span class="tag">Nouveau</span>' : ''}
+        ${p.total_qt === 0 ? '<span class="tag tag-soldout">Épuisé</span>' : ''}
+      </div>
+      <div class="prod-info">
+        <div class="prod-nom">${p.description}</div>
+        <div class="prod-meta">${p.fournisseur || ''} · ${p.season || ''}</div>
+        <div class="prod-prix">${formatPrice(p.price)}</div>
+      </div>
+    `;
+    grid.append(card);
+  });
+
+  const hasMore = filteredProducts.length > end;
+  $('#loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+}
+
+function formatPrice(price) {
+  const num = typeof price === 'number' ? price : parseFloat(price);
+  if (isNaN(num)) return '';
+  return num.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
+}
+
+/* ---------- Navigation catégories ---------- */
+function setupNavigation() {
+  document.querySelectorAll('[data-cat]').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentCategory = link.dataset.cat;
+      applyFilter();
+      window.scrollTo({ top: $('#catalogTitle').offsetTop - 120, behavior: 'smooth' });
+    });
+  });
+
+  $('#heroDiscover')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    currentCategory = 'Nouveautés';
+    applyFilter();
+    window.scrollTo({ top: $('#catalogTitle').offsetTop - 120, behavior: 'smooth' });
+  });
+
+  $('#loadMoreBtn')?.addEventListener('click', () => {
+    currentPage++;
+    renderProducts();
+  });
+
+  $('#searchInput')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase().trim();
+    if (!term) {
+      applyFilter();
+      return;
+    }
+    filteredProducts = allProducts.filter((p) =>
+      p.description?.toLowerCase().includes(term) ||
+      p.fournisseur?.toLowerCase().includes(term) ||
+      p.category?.toLowerCase().includes(term) ||
+      p.season?.toLowerCase().includes(term)
+    );
+    currentPage = 0;
+    renderProducts();
+    $('#catalogTitle').textContent = `Résultats: "${term}"`;
+  });
+}
 
 /* ---------- Infolettre ---------- */
 document.querySelector('.news-form')?.addEventListener('submit', (e) => {
@@ -52,7 +176,6 @@ function buildAuthModal() {
   const errorBox = ce('div', { class: 'auth-error', id: 'authError' });
   const successBox = ce('div', { class: 'auth-success', id: 'authSuccess' });
 
-  /* Formulaire de connexion */
   const formConnexion = ce('form', { class: 'auth-form active', id: 'formConnexion' });
   formConnexion.innerHTML = `
     <div class="auth-field">
@@ -66,7 +189,6 @@ function buildAuthModal() {
     <button type="submit" class="auth-submit">Se connecter</button>
   `;
 
-  /* Formulaire d'inscription */
   const formInscription = ce('form', { class: 'auth-form', id: 'formInscription' });
   formInscription.innerHTML = `
     <div class="auth-field">
@@ -91,7 +213,6 @@ function buildAuthModal() {
   });
   document.body.append(overlay);
 
-  /* Gestion des onglets */
   tabConnexion.addEventListener('click', () => {
     tabConnexion.classList.add('active');
     tabInscription.classList.remove('active');
@@ -107,7 +228,6 @@ function buildAuthModal() {
     hideMessages();
   });
 
-  /* Soumission des formulaires */
   formConnexion.addEventListener('submit', handleLogin);
   formInscription.addEventListener('submit', handleSignUp);
 }
@@ -133,15 +253,9 @@ function showSuccess(msg) {
   $('#authError')?.classList.remove('show');
 }
 
-/* ---------- Ouverture / fermeture du modal ---------- */
-function openAuth() {
-  $('#authOverlay')?.classList.add('open');
-}
-function closeAuth() {
-  $('#authOverlay')?.classList.remove('open');
-}
+function openAuth() { $('#authOverlay')?.classList.add('open'); }
+function closeAuth() { $('#authOverlay')?.classList.remove('open'); }
 
-/* ---------- Connexion ---------- */
 async function handleLogin(e) {
   e.preventDefault();
   hideMessages();
@@ -164,7 +278,6 @@ async function handleLogin(e) {
   renderAuthState();
 }
 
-/* ---------- Inscription ---------- */
 async function handleSignUp(e) {
   e.preventDefault();
   hideMessages();
@@ -196,7 +309,6 @@ async function handleSignUp(e) {
   if (data.user) {
     showSuccess('Compte créé avec bienvenue ! Vous pouvez maintenant vous connecter.');
     e.target.reset();
-    /* Basculer vers l'onglet connexion */
     document.querySelectorAll('.auth-tab').forEach((t) => t.classList.remove('active'));
     document.querySelector('.auth-form').classList.remove('active');
     const tabConnexion = document.querySelectorAll('.auth-tab')[0];
@@ -207,24 +319,20 @@ async function handleSignUp(e) {
   }
 }
 
-/* ---------- Déconnexion ---------- */
 async function handleLogout() {
   await supabase.auth.signOut();
   currentUser = null;
   renderAuthState();
 }
 
-/* ---------- Rendu de l'état d'authentification dans l'en-tête ---------- */
 function renderAuthState() {
   const connexionSlot = document.querySelector('.icons').children[0];
   if (!connexionSlot) return;
 
-  /* Supprimer tout menu utilisateur précédent */
   const existingMenu = $('#authUserMenu');
   if (existingMenu) existingMenu.remove();
 
   if (currentUser) {
-    /* Utilisateur connecté : remplacer par le menu utilisateur */
     const isAdmin = currentUser.email === 'info@lechoixdesophie.com';
     const wrapper = ce('div', { class: 'auth-user-menu', id: 'authUserMenu' });
 
@@ -257,7 +365,6 @@ function renderAuthState() {
     wrapper.append(btn, dropdown);
     connexionSlot.replaceWith(wrapper);
   } else {
-    /* Visiteur : bouton Connexion */
     const link = ce('a', { href: '#' });
     link.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="3.5" stroke="#141416" stroke-width="1.1"/><path d="M3.5 17.5c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5" stroke="#141416" stroke-width="1.1"/></svg>
@@ -272,15 +379,14 @@ function renderAuthState() {
 }
 
 /* ---------- Initialisation ---------- */
-async function initAuth() {
+async function init() {
   buildAuthModal();
+  setupNavigation();
 
-  /* Récupérer la session existante */
   const { data: { session } } = await supabase.auth.getSession();
   if (session) currentUser = session.user;
   renderAuthState();
 
-  /* Écouter les changements d'état d'authentification */
   supabase.auth.onAuthStateChange((_event, session) => {
     (async () => {
       currentUser = session?.user ?? null;
@@ -288,7 +394,6 @@ async function initAuth() {
     })();
   });
 
-  /* Brancher le bouton Connexion initial */
   const connexionLink = document.querySelector('.icons a');
   if (connexionLink && connexionLink.textContent.includes('Connexion')) {
     connexionLink.addEventListener('click', (e) => {
@@ -296,6 +401,8 @@ async function initAuth() {
       openAuth();
     });
   }
+
+  await loadProducts();
 }
 
-initAuth();
+init();

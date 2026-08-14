@@ -110,6 +110,12 @@ footer { background: var(--noir); color: #CFC8B8; }
 .foot-bottom a { color: #7C766A; }
 .foot-bottom div { display: flex; gap: 24px; }
 
+/* Loading + product meta */
+.loading-msg { grid-column: 1 / -1; text-align: center; padding: 60px 0; color: var(--gris); font-size: 15px; font-weight: 300; }
+.prod-meta { font-size: 12px; color: #9A9387; font-weight: 300; margin-bottom: 4px; }
+.tag-soldout { background: #8A8377; color: var(--blanc); left: auto; right: 14px; }
+#loadMoreBtn { cursor: pointer; }
+
 /* Responsive */
 @media (max-width: 1120px) {
   .grid4 { grid-template-columns: repeat(2, 1fr); }

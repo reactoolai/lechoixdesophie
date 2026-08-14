@@ -12,7 +12,7 @@
 </head>
 <body>
 
-  <div class="bandeau">Livraison offerte dès 100 $ · Nouveautés d'automne en boutique et en ligne</div>
+  <div class="bandeau">Livraison offerte dès 100 $ · Nouveautés du printemps 2026 en boutique et en ligne</div>
 
   <div class="utility">
     <div class="wrap">
@@ -32,7 +32,7 @@
       <div class="search">
         <label>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#8A8377"/><path d="M11 11 L15 15" stroke="#8A8377" stroke-width="1.2"/></svg>
-          <input type="search" placeholder="Rechercher un produit, une marque…">
+          <input type="search" id="searchInput" placeholder="Rechercher un produit, une marque…">
         </label>
       </div>
       <div class="icons">
@@ -47,52 +47,54 @@
         <a href="#">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 6.5h12l-1 11H5l-1-11z" stroke="#141416" stroke-width="1.1"/><path d="M7 6.5V5a3 3 0 0 1 6 0v1.5" stroke="#141416" stroke-width="1.1"/></svg>
           Panier
-          <span class="badge">2</span>
+          <span class="badge">0</span>
         </a>
       </div>
     </div>
-    <nav class="wrap nav">
-      <a href="#">Nouveautés</a>
-      <a href="#">Robes</a>
-      <a href="#">Vêtements</a>
-      <a href="#">Tricots &amp; mailles</a>
-      <a href="#">Manteaux</a>
-      <a href="#">Accessoires</a>
-      <a href="#">Collections</a>
-      <a href="#" class="soldes">Soldes</a>
+    <nav class="wrap nav" id="mainNav">
+      <a href="#" data-cat="Nouveautés">Nouveautés</a>
+      <a href="#" data-cat="Robes">Robes</a>
+      <a href="#" data-cat="Chandails">Chandails</a>
+      <a href="#" data-cat="Blouses">Blouses</a>
+      <a href="#" data-cat="Pantalons">Pantalons</a>
+      <a href="#" data-cat="Denim">Denim</a>
+      <a href="#" data-cat="Vestes & Manteaux">Vestes &amp; Manteaux</a>
+      <a href="#" data-cat="Jupes">Jupes</a>
+      <a href="#" data-cat="Combinaisons">Combinaisons</a>
+      <a href="#" data-cat="Accessoires">Accessoires</a>
     </nav>
   </header>
 
   <section class="hero">
-    <img src="https://images.ctfassets.net/m5sbi73tpqpw/1Emjl3SKru0KuRbAdvkmIz/6a67876179dd6d9ad78376ab641818ff/CR_-_Frontpage_-_HS26_-_Desktop_-_NHB_-_M.jpg?w=2200&q=70" alt="Collection automne 2026">
+    <img src="https://images.ctfassets.net/m5sbi73tpqpw/1Emjl3SKru0KuRbAdvkmIz/6a67876179dd6d9ad78376ab641818ff/CR_-_Frontpage_-_HS26_-_Desktop_-_NHB_-_M.jpg?w=2200&q=70" alt="Collection printemps 2026">
     <div class="hero-overlay">
       <div class="wrap" style="width:100%">
         <div class="hero-card">
-          <div class="surtitre">Automne 2026</div>
+          <div class="surtitre">Printemps 2026</div>
           <h1>La nouvelle collection est arrivée</h1>
           <p>Mode féminine qui célèbre votre unicité — du chic décontracté au glamour urbain.</p>
-          <a href="#" class="btn">Découvrir</a>
+          <a href="#" class="btn" id="heroDiscover">Découvrir</a>
         </div>
       </div>
     </div>
   </section>
 
   <section class="wrap s-pad-sm">
-    <div class="grid4">
-      <a href="#" class="cat">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-rook-dress-med-blue-momentis-sp263491deblu.jpg?v=1782500140&width=900" alt="Robes"></div>
+    <div class="grid4" id="catGrid">
+      <a href="#" class="cat" data-cat="Robes">
+        <div class="ph"><img src="/images/products/10614298-1----0-62c259edc6754d50a60a48755aeea829.jpg" alt="Robes"></div>
         <div class="cat-label"><span>Robes</span></div>
       </a>
-      <a href="#" class="cat">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-cindy-top-off-white-momentis-sp267557saofw.jpg?v=1782500770&width=900" alt="Hauts et blouses"></div>
-        <div class="cat-label"><span>Hauts &amp; blouses</span></div>
+      <a href="#" class="cat" data-cat="Chandails">
+        <div class="ph"><img src="/images/products/10614483-1----0-c1a08bfe10e94a83a450bb5da71d5b5b.jpg" alt="Chandails"></div>
+        <div class="cat-label"><span>Chandails</span></div>
       </a>
-      <a href="#" class="cat">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-laurie-sweater-emerald-momentis-sp261570kcgre.jpg?v=1782500378&width=900" alt="Tricots et mailles"></div>
-        <div class="cat-label"><span>Tricots &amp; mailles</span></div>
+      <a href="#" class="cat" data-cat="Blouses">
+        <div class="ph"><img src="/images/products/10613845-1----0-b156cfe09d324d459c1eb1ba49742c7a.jpg" alt="Blouses"></div>
+        <div class="cat-label"><span>Blouses</span></div>
       </a>
-      <a href="#" class="cat">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-fen-jacket-bleached-blue-momentis-sp265383deblu_cf252d67-8bbd-4304-8e60-cece31a6cabd.jpg?v=1782500155&width=900" alt="Manteaux et vestes"></div>
+      <a href="#" class="cat" data-cat="Vestes & Manteaux">
+        <div class="ph"><img src="/images/products/10614020-1----0-22c77023851c4d1289d289bd907d879a.jpg" alt="Manteaux et vestes"></div>
         <div class="cat-label"><span>Manteaux &amp; vestes</span></div>
       </a>
     </div>
@@ -100,74 +102,26 @@
 
   <section class="wrap s-pad">
     <div class="section-head">
-      <h2>Nouveautés</h2>
-      <a href="#" class="tout-voir">Tout voir</a>
+      <h2 id="catalogTitle">Nouveautés</h2>
+      <a href="#" class="tout-voir" id="voirTout" style="display:none">Tout voir</a>
     </div>
-    <div class="grid4">
-      <div class="prod">
-        <div class="ph">
-          <img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-maoli-blouse-orange-momentis-sp266676cvora.jpg?v=1782501030&width=900" alt="Blouse Maoli">
-          <span class="tag">Nouveau</span>
-        </div>
-        <div class="prod-info"><div class="prod-nom">Blouse Maoli — orange</div><div class="prod-prix">129,95 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph">
-          <img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-rio-top-orange-momentis-sp266691cvora.jpg?v=1782500977&width=900" alt="Haut Rio">
-          <span class="tag">Nouveau</span>
-        </div>
-        <div class="prod-info"><div class="prod-nom">Haut Rio — orange</div><div class="prod-prix">89,95 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph">
-          <img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-edie-red-border-scarf-print-momentis-ss266742prprt.jpg?v=1782501816&width=900" alt="Robe Edie">
-        </div>
-        <div class="prod-info"><div class="prod-nom">Robe Edie — imprimé foulard</div><div class="prod-prix">205,00 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph">
-          <img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-quinn-top-bleached-denim-suede-momentis-sp266610vlblu.jpg?v=1782501236&width=900" alt="Haut Quinn">
-          <span class="tag">Exclusivité</span>
-        </div>
-        <div class="prod-info"><div class="prod-nom">Haut Quinn — suède denim</div><div class="prod-prix">97,95 $</div></div>
-      </div>
+    <div id="productGrid" class="grid4">
+      <div class="loading-msg">Chargement des produits…</div>
+    </div>
+    <div id="loadMoreWrap" style="text-align:center; margin-top:40px; display:none">
+      <button class="btn-outline" id="loadMoreBtn">Afficher plus</button>
     </div>
   </section>
 
   <section class="editorial">
     <div class="wrap">
-      <div class="edit-img"><img src="https://melissanepton.com/cdn/shop/files/Melissa_Nepton_-_collection_1000_x_1000_px.png?v=1770667031&width=1000" alt="La boutique"></div>
+      <div class="edit-img"><img src="/assets/monogramme.png" alt="La boutique" style="object-fit:contain; padding:80px; background:var(--ivoire)"></div>
       <div class="edit-txt">
         <img src="/assets/monogramme.png" alt="" width="72" style="margin-bottom:24px">
         <div class="surtitre" style="color:#C9A962">Notre histoire</div>
         <h2>Une boutique, un regard, des pièces choisies une à une</h2>
-        <p>Chaque saison, Sophie sélectionne des vêtements qui allient qualité, confort et caractère. Une mode pensée pour les femmes d'ici, à porter au quotidien comme dans les grandes occasions.</p>
+        <p>Chaque saison, Sophie sélectionne des vêtements qui allient qualité, confort et caractère. Une mode pensé pour les femmes d'ici, à porter au quotidien comme dans les grandes occasions.</p>
         <a href="#" class="btn-outline">Visiter la boutique — Alma</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="wrap s-pad">
-    <div class="section-head">
-      <h2>Les coups de cœur de Sophie</h2>
-      <a href="#" class="tout-voir">Tout voir</a>
-    </div>
-    <div class="grid4">
-      <div class="prod">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-veruka-sweater-off-white-momentis-sp261569kcofw.jpg?v=1782500336&width=900" alt="Chandail Veruka"></div>
-        <div class="prod-info"><div class="prod-nom">Chandail Veruka — blanc cassé</div><div class="prod-prix">88,95 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-colton-dress-lt-blue-wash-momentis-sp263518deblue.jpg?v=1782500184&width=900" alt="Robe Colton"></div>
-        <div class="prod-info"><div class="prod-nom">Robe Colton — denim pâle</div><div class="prod-prix">139,95 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-nina-blouse-navy-momentis-sp266634linvy.jpg?v=1782500560&width=900" alt="Blouse Nina"></div>
-        <div class="prod-info"><div class="prod-nom">Blouse Nina — marine</div><div class="prod-prix">154,95 $</div></div>
-      </div>
-      <div class="prod">
-        <div class="ph"><img src="https://melissanepton.com/cdn/shop/files/melissa-nepton-toro-short-orange-momentis-sp264731cvora.jpg?v=1782501012&width=900" alt="Short Toro"></div>
-        <div class="prod-info"><div class="prod-nom">Short Toro — orange</div><div class="prod-prix">110,95 $</div></div>
       </div>
     </div>
   </section>
@@ -207,10 +161,10 @@
       </div>
       <div class="foot-col">
         <div class="foot-titre">Magasiner</div>
-        <a href="#">Nouveautés</a>
-        <a href="#">Vêtements</a>
-        <a href="#">Accessoires</a>
-        <a href="#">Soldes</a>
+        <a href="#" data-cat="Nouveautés">Nouveautés</a>
+        <a href="#" data-cat="Robes">Robes</a>
+        <a href="#" data-cat="Chandails">Chandails</a>
+        <a href="#" data-cat="Vestes & Manteaux">Vestes &amp; Manteaux</a>
       </div>
       <div class="foot-col">
         <div class="foot-titre">Aide</div>
