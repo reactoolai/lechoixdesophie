@@ -705,7 +705,7 @@ function renderAuthState() {
   let slot = iconsEl.querySelector('a');
   if (!slot) return;
   if (currentUser) {
-    const isAdmin = currentUser.email === 'info@lechoixdesophie.com';
+    const isAdmin = ['info@lechoixdesophie.com', 'ohmohamed116@gmail.com'].includes(currentUser.email);
     const wrapper = ce('div', { class: 'auth-user-menu', id: 'authUserMenu' });
     const btn = ce('button', { class: 'auth-user-btn' });
     btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="3.5" stroke="#141416" stroke-width="1.1"/><path d="M3.5 17.5c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5" stroke="#141416" stroke-width="1.1"/></svg><span>Mon compte</span>';
