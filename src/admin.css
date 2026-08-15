@@ -23,6 +23,10 @@
 .admin-search { flex: 1; max-width: 400px; }
 .admin-search input { width: 100%; border: 1px solid var(--ligne); background: var(--blanc); padding: 10px 16px; font-family: 'Jost', sans-serif; font-size: 14px; border-radius: 6px; outline: none; }
 .admin-search input:focus { border-color: var(--or); }
+.admin-filter-confiance { display: flex; align-items: center; gap: 8px; }
+.admin-filter-confiance label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--gris); font-weight: 500; white-space: nowrap; }
+.admin-filter-confiance select { border: 1px solid var(--ligne); background: var(--blanc); padding: 8px 12px; font-family: 'Jost', sans-serif; font-size: 13px; border-radius: 6px; outline: none; }
+.admin-filter-confiance select:focus { border-color: var(--or); }
 
 .admin-table { background: var(--blanc); border-radius: 8px; overflow: hidden; border: 1px solid var(--ligne); }
 .admin-table table { width: 100%; border-collapse: collapse; }

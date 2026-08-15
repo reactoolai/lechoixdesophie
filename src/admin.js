@@ -8,12 +8,13 @@ let editingProduct = null;
 let editingImages = [];
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='440'%3E%3Crect fill='%23F3ECDF' width='400' height='440'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%238A8377' font-size='14'%3EImage à venir%3C/text%3E%3C/svg%3E";
-const STORAGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/product-photos/products/`;
+const STORAGE_NEW = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/product-images/`;
+const STORAGE_OLD = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/product-photos/products/`;
 function adminImgUrl(filename) {
   if (!filename) return FALLBACK_IMG;
   if (filename.startsWith('http') || filename.startsWith('data:')) return filename;
-  if (filename.includes('/')) return filename;
-  return STORAGE_BASE + filename;
+  if (filename.includes('/')) return STORAGE_NEW + filename;
+  return STORAGE_OLD + filename;
 }
 
 const COLOR_MAP = {
@@ -141,11 +142,22 @@ function renderDashboard(content) {
   `;
 }
 
+let adminConfidenceFilter = 'all';
+
 function renderProducts(content) {
   content.innerHTML = `
     <div class="admin-toolbar">
       <div class="admin-search">
         <input type="search" id="adminProductSearch" placeholder="Rechercher par nom, numéro, catégorie…" value="${adminSearchTerm}">
+      </div>
+      <div class="admin-filter-confiance">
+        <label>Confiance photo:</label>
+        <select id="adminConfidenceFilter">
+          <option value="all" ${adminConfidenceFilter === 'all' ? 'selected' : ''}>Toutes</option>
+          <option value="exact" ${adminConfidenceFilter === 'exact' ? 'selected' : ''}>Exacte</option>
+          <option value="approx" ${adminConfidenceFilter === 'approx' ? 'selected' : ''}>Approximative</option>
+          <option value="none" ${adminConfidenceFilter === 'none' ? 'selected' : ''}>Sans photo</option>
+        </select>
       </div>
     </div>
     <div class="admin-table" id="adminProductTable">
@@ -157,11 +169,22 @@ function renderProducts(content) {
     adminSearchTerm = e.target.value;
     renderProductTable();
   });
+  document.getElementById('adminConfidenceFilter').addEventListener('change', (e) => {
+    adminConfidenceFilter = e.target.value;
+    renderProductTable();
+  });
   renderProductTable();
 }
 
 function renderProductTable() {
   let products = allProducts;
+  if (adminConfidenceFilter === 'none') {
+    products = products.filter((p) => !p.image_confidence);
+  } else if (adminConfidenceFilter === 'exact') {
+    products = products.filter((p) => p.image_confidence === 'exact');
+  } else if (adminConfidenceFilter === 'approx') {
+    products = products.filter((p) => p.image_confidence === 'approx');
+  }
   if (adminSearchTerm) {
     const term = adminSearchTerm.toLowerCase();
     products = products.filter((p) =>
@@ -189,6 +212,7 @@ function renderProductTable() {
           <th>Prix</th>
           <th>Stock</th>
           <th>Couleurs</th>
+          <th>Confiance</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -206,6 +230,7 @@ function renderProductTable() {
               <td>${formatPrice(p.price)}</td>
               <td class="admin-stock ${stockClass}">${p.total_qt || 0}</td>
               <td>${colors.length}</td>
+              <td>${p.image_confidence === 'exact' ? '<span style="color:#2a7a4a">Exacte</span>' : p.image_confidence === 'approx' ? '<span style="color:#c08020">Approx.</span>' : '<span style="color:#999">—</span>'}</td>
               <td><button class="admin-btn admin-btn-sm" data-numref="${p.numref}">Modifier</button></td>
             </tr>
           `;
@@ -440,7 +465,7 @@ async function handleFileUpload(files, overlay) {
     const filePath = `products/${fileName}`;
 
     const { error: uploadError } = await supabaseClient.storage
-      .from('product-photos')
+      .from('product-images')
       .upload(filePath, file);
 
     if (uploadError) {
