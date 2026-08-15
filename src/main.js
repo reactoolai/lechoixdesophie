@@ -87,6 +87,27 @@ async function loadProducts() {
     return;
   }
   allProducts = data || [];
+
+  const { data: imgData } = await supabase
+    .from('product_images')
+    .select('product_numref, image_url, sort_order')
+    .order('sort_order', { ascending: true });
+
+  if (imgData) {
+    const imgMap = {};
+    imgData.forEach((row) => {
+      if (!imgMap[row.product_numref]) imgMap[row.product_numref] = [];
+      imgMap[row.product_numref].push(row.image_url);
+    });
+    allProducts.forEach((p) => {
+      const hasImages = Array.isArray(p.images) && p.images.length > 0;
+      const linkedImages = imgMap[p.numref];
+      if (!hasImages && linkedImages && linkedImages.length > 0) {
+        p.images = linkedImages;
+      }
+    });
+  }
+
   await renderCurrentPage();
 }
 
