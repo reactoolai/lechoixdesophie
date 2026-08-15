@@ -47,13 +47,13 @@ function initAdmin(products, sb) {
   supabaseClient = sb;
 }
 
-function renderAdmin(products) {
+async function renderAdmin(products) {
   allProducts = products;
   const root = document.getElementById('adminRoot');
   if (!root) return;
 
-  const session = supabaseClient.auth.getSession ? null : null;
-  const user = supabaseClient?.auth?.currentUser ?? null;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const user = session?.user ?? null;
   if (!user) {
     root.innerHTML = `
       <div class="admin-login-msg">

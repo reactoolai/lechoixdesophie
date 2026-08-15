@@ -87,7 +87,7 @@ async function loadProducts() {
     return;
   }
   allProducts = data || [];
-  renderCurrentPage();
+  await renderCurrentPage();
 }
 
 /* ---------- Routing ---------- */
@@ -107,7 +107,7 @@ function parseRoute() {
   return { page: 'home', category: null };
 }
 
-function navigate() {
+async function navigate() {
   currentRoute = parseRoute();
   if (currentRoute.page === 'catalog') {
     catalogState.category = currentRoute.category;
@@ -119,10 +119,10 @@ function navigate() {
     $('#priceMin').value = '';
     $('#priceMax').value = '';
   }
-  renderCurrentPage();
+  await renderCurrentPage();
 }
 
-function renderCurrentPage() {
+async function renderCurrentPage() {
   const homeEl = $('#page-home');
   const catEl = $('#page-catalog');
   const prodEl = $('#page-product');
@@ -147,7 +147,7 @@ function renderCurrentPage() {
   } else if (currentRoute.page === 'admin') {
     if (adminEl) {
       adminEl.style.display = '';
-      renderAdmin(allProducts);
+      await renderAdmin(allProducts);
     }
   }
   window.scrollTo(0, 0);
@@ -753,7 +753,11 @@ async function init() {
   renderAuthState();
 
   supabase.auth.onAuthStateChange((_event, session) => {
-    (async () => { currentUser = session?.user ?? null; renderAuthState(); })();
+    (async () => {
+      currentUser = session?.user ?? null;
+      renderAuthState();
+      if (currentRoute.page === 'admin') await renderAdmin(allProducts);
+    })();
   });
 
   const connexionLink = document.querySelector('.icons a');
