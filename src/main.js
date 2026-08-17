@@ -48,29 +48,51 @@ function imgUrl(filename) {
 const COLOR_MAP = {
   noir: '#1a1a1a', black: '#1a1a1a', nero: '#1a1a1a', charbon: '#2a2a2a',
   blanc: '#f8f8f0', white: '#f8f8f0', offwhite: '#f0ece0', ecru: '#e8e2d4', creme: '#f5f0e0', ivoire: '#f3ecdf',
+  blanc_casse: '#f0ece0', cassé: '#f0ece0',
   beige: '#d9c9b0', nude: '#e0c4a8', taupe: '#b0a090', sable: '#c8b89c', camel: '#c19a6b', kaki: '#8a7a5a',
-  gris: '#8a8a8a', grey: '#8a8a8a', gray: '#8a8a8a', ardoise: '#5a5a5e', anthracite: '#3a3a3e',
+  naturel: '#e8e0d0', light_nude: '#e0c4a8',
+  gris: '#8a8a8a', grey: '#8a8a8a', gray: '#8a8a8a', ardoise: '#5a5a5e', anthracite: '#3a3a3e', gris_pale: '#c0c0c0',
   brun: '#6b4e3a', marron: '#5a4030', chocolate: '#4a3020', cafe: '#5a3825', cognac: '#8a5a30',
+  caramel: '#c08040', bronze: '#a07050', tan: '#c0a080',
   bleu: '#3a6a9a', blue: '#3a6a9a', marine: '#1a2a4a', navy: '#1a2a4a', denim: '#4a6a8a', ciel: '#a8c8e0', paon: '#1a4a4a',
+  bleu_pale: '#7a9ac0', royal: '#1a3a9a',
   vert: '#4a7a4a', green: '#4a7a4a', olive: '#6a7a3a', sauge: '#9aaa8a', kaki_vert: '#7a8a5a', menthe: '#8ac8a0',
-  rouge: '#b03030', red: '#b03030', bordeaux: '#6a1a1a', wine: '#7a1a2a', brique: '#9a4030',
-  rose: '#e8a8b0', pink: '#e8a8b0', poudre: '#f0c8c8', corail: '#e87060', fuchsia: '#c8407a',
+  sarcelle: '#40a090',
+  rouge: '#b03030', red: '#b03030', bordeaux: '#6a1a1a', wine: '#7a1a2a', brique: '#9a4030', bourgogne: '#6a1a1a',
+  rouille: '#a8502a',
+  rose: '#e8a8b0', pink: '#e8a8b0', poudre: '#f0c8c8', corail: '#e87060', fuchsia: '#c8407a', fushia: '#c8407a',
+  blush: '#f0c8c0', saumon: '#e8a890', peche: '#f0c0a0',
   jaune: '#e8c83a', yellow: '#e8c83a', moutarde: '#c8a020', or: '#c9a962', gold: '#c9a962',
   orange: '#e87830', rust: '#a8502a', terracotta: '#c0604a',
-  violet: '#6a3a7a', purple: '#6a3a7a', mauve: '#9a7aaa', lavande: '#b8a8d0',
+  violet: '#6a3a7a', purple: '#6a3a7a', mauve: '#9a7aaa', lavande: '#b8a8d0', lilas: '#b8a8d0',
   turquoise: '#40c0b0', aqua: '#50b8c8',
   argent: '#c8c8c8', silver: '#c8c8c8', metal: '#b0b0b8',
-  multi: 'multi', assorted: 'multi', varie: 'multi',
+  multi: 'multi', assorted: 'multi', varie: 'multi', raye: 'multi', rayé: 'multi',
 };
 
-function colorToHex(name) {
+function normalizeColorKey(s) {
+  return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_');
+}
+function colorToHex(color) {
+  if (!color) return '#ccc';
+  if (typeof color === 'object' && color.hex) return color.hex;
+  const name = typeof color === 'string' ? color : (color.name || '');
   if (!name) return '#ccc';
-  const key = name.toLowerCase().trim();
+  const key = normalizeColorKey(name);
   if (COLOR_MAP[key]) return COLOR_MAP[key];
   for (const [k, v] of Object.entries(COLOR_MAP)) {
     if (key.includes(k) || k.includes(key)) return v;
   }
   return '#ccc';
+}
+
+function colorName(color) {
+  if (!color) return '';
+  if (typeof color === 'string') return color;
+  return color.name || '';
+}
+function colorKey(color) {
+  return normalizeColorKey(colorName(color));
 }
 
 let cartCount = 0;
@@ -90,14 +112,19 @@ async function loadProducts() {
 
   const { data: imgData } = await supabase
     .from('product_images')
-    .select('product_numref, image_url, sort_order')
+    .select('product_numref, image_url, sort_order, color')
     .order('sort_order', { ascending: true });
 
   if (imgData) {
     const imgMap = {};
+    const imgColorMap = {};
     imgData.forEach((row) => {
       if (!imgMap[row.product_numref]) imgMap[row.product_numref] = [];
       imgMap[row.product_numref].push(row.image_url);
+      if (row.color) {
+        if (!imgColorMap[row.product_numref]) imgColorMap[row.product_numref] = new Set();
+        imgColorMap[row.product_numref].add(row.color);
+      }
     });
     allProducts.forEach((p) => {
       const hasImages = Array.isArray(p.images) && p.images.length > 0;
@@ -105,13 +132,65 @@ async function loadProducts() {
       if (!hasImages && linkedImages && linkedImages.length > 0) {
         p.images = linkedImages;
       }
+      const colorMap = new Map();
+      (Array.isArray(p.colors) ? p.colors : []).filter(Boolean).forEach((c) => {
+        const k = colorKey(c);
+        if (!colorMap.has(k)) colorMap.set(k, c);
+      });
+      const imgColors = imgColorMap[p.numref];
+      if (imgColors) {
+        imgColors.forEach((c) => {
+          const k = colorKey(c);
+          if (!colorMap.has(k)) colorMap.set(k, c);
+        });
+      }
+      if (colorMap.size > 0) p.colors = [...colorMap.values()];
     });
   }
 
+  await loadCategoryMedia();
   await renderCurrentPage();
 }
 
-/* ---------- Routing ---------- */
+/* ---------- Médias page d'accueil (vidéos catégories) ---------- */
+const CATEGORY_SLOTS_MEDIA = [
+  { key: 'cat-robes', catHref: '#/cat/Robes', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10614298-1----0-62c259edc6754d50a60a48755aeea829.jpg', label: 'Robes' },
+  { key: 'cat-shorts', catHref: '#/cat/Jupes', imgSrc: '', label: 'Shorts' },
+  { key: 'cat-jupes', catHref: '#/cat/Jupes', imgSrc: '', label: 'Jupes' },
+  { key: 'cat-tops', catHref: '#/cat/Pantalons', imgSrc: '', label: 'Tops' },
+  { key: 'cat-blouses', catHref: '#/cat/Blouses', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10613845-1----0-b156cfe09d324d459c1eb1ba49742c7a.jpg', label: 'Blouses' },
+];
+const VIDEO_STORAGE_PUBLIC = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/category-videos/`;
+
+async function loadCategoryMedia() {
+  const { data } = await supabase
+    .from('site_media')
+    .select('*')
+    .in('media_key', CATEGORY_SLOTS_MEDIA.map((s) => s.key));
+  const mediaMap = {};
+  (data || []).forEach((row) => { mediaMap[row.media_key] = row; });
+
+  const grid = document.getElementById('catGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (const slot of CATEGORY_SLOTS_MEDIA) {
+    const media = mediaMap[slot.key];
+    const href = slot.catHref.replace(' & ', '%20&%20');
+    const a = ce('a', { href: href, class: 'cat' });
+    const ph = ce('div', { class: 'ph' });
+    if (media) {
+      const videoUrl = media.url.startsWith('http') ? media.url : VIDEO_STORAGE_PUBLIC + media.url;
+      ph.innerHTML = `<video src="${videoUrl}" autoplay muted loop playsinline></video>`;
+    } else {
+      ph.innerHTML = `<img src="${slot.imgSrc}" alt="${slot.label}">`;
+    }
+    a.appendChild(ph);
+    const labelDiv = ce('div', { class: 'cat-label' });
+    labelDiv.innerHTML = `<span>${slot.label}</span>`;
+    a.appendChild(labelDiv);
+    grid.appendChild(a);
+  }
+}
 function parseRoute() {
   const hash = window.location.hash.slice(1);
   if (hash === '/admin' || hash.startsWith('/admin')) {
@@ -159,6 +238,7 @@ async function renderCurrentPage() {
   if (currentRoute.page === 'home') {
     homeEl.style.display = '';
     renderHomePreview();
+    loadCategoryMedia();
   } else if (currentRoute.page === 'catalog') {
     catEl.style.display = '';
     renderCatalog();
@@ -202,7 +282,7 @@ function getCatalogProducts() {
   if (f.colors.size > 0) {
     products = products.filter((p) => {
       const colors = Array.isArray(p.colors) ? p.colors : [];
-      return colors.some((c) => f.colors.has(c));
+      return colors.some((c) => f.colors.has(colorKey(c)));
     });
   }
   if (f.sizes.size > 0) {
@@ -258,31 +338,38 @@ function buildFilterChips() {
     products = allProducts.filter((p) => p.category === catalogState.category);
   }
 
-  const colorSet = new Set();
+  const colorMap = new Map();
   const sizeSet = new Set();
   products.forEach((p) => {
-    (Array.isArray(p.colors) ? p.colors : []).forEach((c) => { if (c) colorSet.add(c); });
+    (Array.isArray(p.colors) ? p.colors : []).forEach((c) => {
+      if (c) {
+        const key = colorKey(c);
+        if (!colorMap.has(key)) colorMap.set(key, c);
+      }
+    });
     (Array.isArray(p.sizes) ? p.sizes : []).forEach((s) => { if (s) sizeSet.add(s); });
   });
 
   const colorsContainer = $('#filterColors');
   colorsContainer.innerHTML = '';
   colorsContainer.className = 'color-swatches';
-  [...colorSet].sort().forEach((color) => {
+  [...colorMap.keys()].sort().forEach((key) => {
+    const color = colorMap.get(key);
     const hex = colorToHex(color);
-    const swatch = ce('button', { class: 'color-swatch', title: color, 'aria-label': color });
+    const name = colorName(color);
+    const swatch = ce('button', { class: 'color-swatch', title: name, 'aria-label': name });
     if (hex === 'multi') {
       swatch.classList.add('swatch-multi');
     } else {
       swatch.style.setProperty('--swatch-color', hex);
     }
-    if (catalogState.filters.colors.has(color)) swatch.classList.add('active');
+    if (catalogState.filters.colors.has(key)) swatch.classList.add('active');
     swatch.addEventListener('click', () => {
-      if (catalogState.filters.colors.has(color)) {
-        catalogState.filters.colors.delete(color);
+      if (catalogState.filters.colors.has(key)) {
+        catalogState.filters.colors.delete(key);
         swatch.classList.remove('active');
       } else {
-        catalogState.filters.colors.add(color);
+        catalogState.filters.colors.add(key);
         swatch.classList.add('active');
       }
       catalogState.visibleCount = 24;
@@ -332,12 +419,19 @@ function buildProductCard(p) {
   if (p.total_qt === 0) tags.push('<span class="tag tag-soldout">Épuisé</span>');
 
   const colors = Array.isArray(p.colors) ? p.colors.filter((c) => c) : [];
-  const colorDots = colors.slice(0, 5).map((c) => {
+  const dedupedColors = [];
+  const seenKeys = new Set();
+  colors.forEach((c) => {
+    const k = colorKey(c);
+    if (!seenKeys.has(k)) { seenKeys.add(k); dedupedColors.push(c); }
+  });
+  const colorDots = dedupedColors.slice(0, 5).map((c) => {
     const hex = colorToHex(c);
-    if (hex === 'multi') return '<span class="prod-color-dot dot-multi" title="' + c + '"></span>';
-    return '<span class="prod-color-dot" style="--swatch-color:' + hex + '" title="' + c + '"></span>';
+    const name = colorName(c);
+    if (hex === 'multi') return '<button class="prod-color-dot dot-multi" data-color="' + name + '" title="' + name + '"></button>';
+    return '<button class="prod-color-dot" style="--swatch-color:' + hex + '" data-color="' + name + '" title="' + name + '"></button>';
   }).join('');
-  const moreColors = colors.length > 5 ? '<span class="prod-color-more">+' + (colors.length - 5) + '</span>' : '';
+  const moreColors = dedupedColors.length > 5 ? '<span class="prod-color-more">+' + (dedupedColors.length - 5) + '</span>' : '';
 
   const soldOut = p.total_qt === 0;
 
@@ -356,11 +450,26 @@ function buildProductCard(p) {
         <div class="prod-nom">${p.description || ''}</div>
         <div class="prod-bottom">
           <div class="prod-prix">${formatPrice(p.price)}</div>
-          ${colors.length > 0 ? '<div class="prod-colors">' + colorDots + moreColors + '</div>' : ''}
+          ${dedupedColors.length > 0 ? '<div class="prod-colors">' + colorDots + moreColors + '</div>' : ''}
         </div>
       </a>
     </div>
   `;
+
+  card.querySelectorAll('.prod-color-dot[data-color]').forEach((dot) => {
+    dot.addEventListener('click', (e) => {
+      e.preventDefault();
+ e.stopPropagation();
+      const key = normalizeColorKey(dot.dataset.color);
+      if (catalogState.filters.colors.has(key)) {
+        catalogState.filters.colors.delete(key);
+      } else {
+        catalogState.filters.colors.add(key);
+      }
+      catalogState.visibleCount = 24;
+      renderCatalog();
+    });
+  });
 
   const cartBtn = card.querySelector('.prod-cart-btn');
   if (cartBtn && !soldOut) {
@@ -411,7 +520,13 @@ async function renderProductDetail() {
 
   breadcrumb.innerHTML = `<a href="#/">Accueil</a> <span>/</span> <a href="#/cat/${encodeURIComponent(product.category)}">${product.category}</a> <span>/</span> <span>${product.description || ''}</span>`;
 
-  const colors = Array.isArray(product.colors) ? product.colors.filter(Boolean) : [];
+  const rawColors = Array.isArray(product.colors) ? product.colors.filter(Boolean) : [];
+  const colors = [];
+  const seenKeys = new Set();
+  rawColors.forEach((c) => {
+    const k = colorKey(c);
+    if (!seenKeys.has(k)) { seenKeys.add(k); colors.push(c); }
+  });
   const sizes = Array.isArray(product.sizes) ? product.sizes.filter(Boolean) : [];
   const soldOut = product.total_qt <= 0;
   const inStock = product.total_qt > 0;
@@ -453,10 +568,12 @@ async function renderProductDetail() {
 
   const colorDots = colors.map((c) => {
     const hex = colorToHex(c);
-    const ci = colorImages.find((ci) => ci.color === c);
+    const name = colorName(c);
+    const key = colorKey(c);
+    const ci = colorImages.find((ci) => colorKey(ci.color) === key);
     const firstImg = ci ? ci.image_url : null;
-    if (hex === 'multi') return `<button class="pdp-color-btn" data-color="${c}" data-img="${firstImg || ''}"><span class="prod-color-dot dot-multi" title="${c}"></span></button>`;
-    return `<button class="pdp-color-btn" data-color="${c}" data-img="${firstImg || ''}"><span class="prod-color-dot" style="--swatch-color:${hex}" title="${c}"></span></button>`;
+    if (hex === 'multi') return `<button class="pdp-color-btn" data-color="${name}" data-img="${firstImg || ''}"><span class="prod-color-dot dot-multi" title="${name}"></span></button>`;
+    return `<button class="pdp-color-btn" data-color="${name}" data-img="${firstImg || ''}"><span class="prod-color-dot" style="--swatch-color:${hex}" title="${name}"></span></button>`;
   }).join('');
 
   const sizeChips = sizes.map((s) => `<button class="chip${soldOut ? ' disabled' : ''}">${s}</button>`).join('');
@@ -475,7 +592,7 @@ async function renderProductDetail() {
       </div>
       <div class="pdp-meta">
         <div><span>Numéro:</span> ${product.numref}</div>
-        ${product.fournisseur ? `<div><span>Fournisseur:</span> ${product.fournisseur}</div>` : ''}
+        ${product.fournisseur ? `<div><span>Marque:</span> ${product.fournisseur}</div>` : ''}
         ${product.subdept ? `<div><span>Type:</span> ${product.subdept}</div>` : ''}
       </div>
       ${currentUser ? `<div class="pdp-admin-bar"><button class="admin-btn" id="pdpEditBtn">Modifier ce produit</button></div>` : ''}
@@ -507,8 +624,8 @@ async function renderProductDetail() {
     const thumbsEl = $('#pdpThumbs');
     container.querySelectorAll('.pdp-color-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const color = btn.dataset.color;
-        const colorImgs = colorImages.filter((ci) => ci.color === color);
+        const key = normalizeColorKey(btn.dataset.color);
+        const colorImgs = colorImages.filter((ci) => colorKey(ci.color) === key);
         if (colorImgs.length > 0) {
           mainImg.src = imgUrl(colorImgs[0].image_url);
           if (thumbsEl) {
