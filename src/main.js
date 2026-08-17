@@ -97,6 +97,113 @@ function colorKey(color) {
 
 let cartCount = 0;
 
+const SITE_URL = 'https://lechoixdesophie.com';
+const SITE_NAME = 'Le Choix de Sophie';
+
+function ensureMeta(attr, key, val) {
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', val);
+}
+
+function ensureMetaProperty(prop, val) { ensureMeta('property', prop, val); }
+function ensureMetaName(name, val) { ensureMeta('name', name, val); }
+
+function ensureJsonLd(id, json) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = id;
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(json);
+}
+
+function removeJsonLd(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function updateSEOForProduct(product) {
+  const title = `${product.description || 'Produit'} — ${SITE_NAME}`;
+  const desc = product.description
+    ? `${product.description} — ${formatPrice(product.price)} chez ${SITE_NAME}, boutique de mode féminine à Alma. ${product.fournisseur ? 'Marque: ' + product.fournisseur + '. ' : ''}${product.category ? 'Catégorie: ' + product.category + '.' : ''}`
+    : `Mode féminine à Alma — ${SITE_NAME}`;
+  const url = `${SITE_URL}/#/prod/${encodeURIComponent(product.numref)}`;
+  const coverImg = Array.isArray(product.images) && product.images.length > 0
+    ? imgUrl(product.images[0])
+    : `${SITE_URL}/assets/lockup-sombre.png`;
+
+  document.title = title;
+  ensureMetaName('description', desc);
+  document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:title', title);
+  ensureMetaProperty('og:description', desc);
+  ensureMetaProperty('og:url', url);
+  ensureMetaProperty('og:type', 'product');
+  ensureMetaProperty('og:image', coverImg);
+  ensureMetaName('twitter:title', title);
+  ensureMetaName('twitter:description', desc);
+  ensureMetaName('twitter:image', coverImg);
+
+  ensureJsonLd('ld-product', {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.description || '',
+    description: desc,
+    sku: product.numref,
+    brand: product.fournisseur ? { '@type': 'Brand', name: product.fournisseur } : undefined,
+    category: product.category || undefined,
+    offers: {
+      '@type': 'Offer',
+      price: parseFloat(product.price) || 0,
+      priceCurrency: 'CAD',
+      availability: product.total_qt > 0 ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+      url: url,
+    },
+    image: [coverImg],
+  });
+}
+
+function updateSEOForCatalog(category) {
+  const title = `${category} — ${SITE_NAME}`;
+  const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison partout au Québec dès 100 $.`;
+  const url = `${SITE_URL}/#/cat/${encodeURIComponent(category)}`;
+
+  document.title = title;
+  ensureMetaName('description', desc);
+  document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:title', title);
+  ensureMetaProperty('og:description', desc);
+  ensureMetaProperty('og:url', url);
+  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  ensureMetaName('twitter:title', title);
+  ensureMetaName('twitter:description', desc);
+  ensureMetaName('twitter:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  removeJsonLd('ld-product');
+}
+
+function updateSEOForHome() {
+  document.title = `${SITE_NAME} — Boutique de mode féminine à Alma, Lac-Saint-Jean`;
+  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison partout au Québec dès 100 $.");
+  document.querySelector('link[rel="canonical"]').href = SITE_URL + '/';
+  ensureMetaProperty('og:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
+  ensureMetaProperty('og:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Du chic décontracté au glamour urbain.");
+  ensureMetaProperty('og:url', SITE_URL + '/');
+  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  ensureMetaName('twitter:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
+  ensureMetaName('twitter:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean.");
+  ensureMetaName('twitter:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  removeJsonLd('ld-product');
+}
+
 /* ---------- Chargement produits ---------- */
 async function loadProducts() {
   const { data, error } = await supabase
@@ -239,12 +346,16 @@ async function renderCurrentPage() {
     homeEl.style.display = '';
     renderHomePreview();
     loadCategoryMedia();
+    updateSEOForHome();
   } else if (currentRoute.page === 'catalog') {
     catEl.style.display = '';
     renderCatalog();
+    updateSEOForCatalog(catalogState.category);
   } else if (currentRoute.page === 'product') {
     prodEl.style.display = '';
     renderProductDetail();
+    const product = allProducts.find((p) => p.numref === currentRoute.numref);
+    if (product) updateSEOForProduct(product);
   } else if (currentRoute.page === 'admin') {
     if (adminEl) {
       adminEl.style.display = '';
