@@ -436,15 +436,16 @@ function buildProductCard(p) {
   const soldOut = p.total_qt === 0;
 
   card.innerHTML = `
-    <a href="#/prod/${encodeURIComponent(p.numref)}" class="prod-link">
-      <div class="ph">
+    <div class="ph">
+      <a href="#/prod/${encodeURIComponent(p.numref)}" class="prod-link">
         <img src="${imgSrc}" alt="${p.description || ''}" loading="lazy" onerror="this.src='${FALLBACK_IMG}'">
-        ${tags.join('')}
-      </div>
-    </a>
-    <button class="prod-cart-btn" ${soldOut ? 'disabled' : ''} aria-label="Ajouter au panier">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 5h2l2.5 12h11l2.5-9H6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.3" fill="currentColor"/><circle cx="17" cy="20" r="1.3" fill="currentColor"/></svg>
-    </button>
+      </a>
+      ${tags.join('')}
+      <button class="prod-cart-btn" aria-label="Ajouter au panier">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 5h2l2.5 12h11l2.5-9H6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.3" fill="currentColor"/><circle cx="17" cy="20" r="1.3" fill="currentColor"/></svg>
+        <span>Ajouter</span>
+      </button>
+    </div>
     <div class="prod-info">
       <a href="#/prod/${encodeURIComponent(p.numref)}" class="prod-link">
         <div class="prod-nom">${p.description || ''}</div>
@@ -472,7 +473,7 @@ function buildProductCard(p) {
   });
 
   const cartBtn = card.querySelector('.prod-cart-btn');
-  if (cartBtn && !soldOut) {
+  if (cartBtn) {
     cartBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       cartCount++;
@@ -482,10 +483,10 @@ function buildProductCard(p) {
         badge.style.display = 'flex';
       }
       cartBtn.classList.add('added');
-      cartBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      cartBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ajouté</span>';
       setTimeout(() => {
         cartBtn.classList.remove('added');
-        cartBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 5h2l2.5 12h11l2.5-9H6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.3" fill="currentColor"/><circle cx="17" cy="20" r="1.3" fill="currentColor"/></svg>';
+        cartBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 5h2l2.5 12h11l2.5-9H6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.3" fill="currentColor"/><circle cx="17" cy="20" r="1.3" fill="currentColor"/></svg><span>Ajouter</span>';
       }, 1200);
     });
   }
@@ -580,7 +581,7 @@ async function renderProductDetail() {
     return `<button class="pdp-color-btn" data-color="${name}" data-img="${firstImg || ''}"><span class="prod-color-dot" style="--swatch-color:${hex}" title="${name}"></span></button>`;
   }).join('');
 
-  const sizeChips = sizes.map((s) => `<button class="chip${soldOut ? ' disabled' : ''}">${s}</button>`).join('');
+  const sizeChips = sizes.map((s) => `<button class="chip">${s}</button>`).join('');
 
   container.innerHTML = `
     ${galleryHtml}
@@ -592,7 +593,7 @@ async function renderProductDetail() {
       ${colors.length > 0 ? `<div class="pdp-section"><div class="pdp-label">Couleurs</div><div class="pdp-colors" id="pdpColors">${colorDots}</div></div>` : ''}
       ${sizes.length > 0 ? `<div class="pdp-section"><div class="pdp-label">Tailles</div><div class="pdp-sizes">${sizeChips}</div></div>` : ''}
       <div class="pdp-section">
-        <button class="btn pdp-add-cart" ${soldOut ? 'disabled' : ''}>${soldOut ? 'Produit épuisé' : 'Ajouter au panier'}</button>
+        <button class="btn pdp-add-cart">Ajouter au panier</button>
       </div>
       <div class="pdp-meta">
         <div><span>Numéro:</span> ${product.numref}</div>
@@ -691,7 +692,7 @@ async function renderProductDetail() {
   }
 
   const addBtn = container.querySelector('.pdp-add-cart');
-  if (addBtn && !soldOut) {
+  if (addBtn) {
     addBtn.addEventListener('click', () => {
       cartCount++;
       const badge = document.querySelector('.badge');
