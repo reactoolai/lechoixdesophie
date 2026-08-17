@@ -278,11 +278,11 @@ footer { background: var(--noir); color: #CFC8B8; }
 .pdp-stock.out { color: #b03030; }
 .pdp-section { margin-bottom: 28px; }
 .pdp-label { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--gris); margin-bottom: 12px; font-weight: 500; }
-.pdp-colors { display: flex; gap: 8px; flex-wrap: wrap; }
-.pdp-color-btn { background: none; border: none; cursor: pointer; padding: 3px; border-radius: 4px; transition: transform .15s; }
+.pdp-colors { display: flex; gap: 10px; flex-wrap: wrap; }
+.pdp-color-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 6px; transition: transform .15s; }
 .pdp-color-btn:hover { transform: scale(1.1); }
-.pdp-color-btn.active { box-shadow: 0 0 0 2px var(--blanc), 0 0 0 4px var(--or); border-radius: 4px; }
-.pdp-color-btn .prod-color-dot { width: 32px; height: 32px; border-radius: 4px; }
+.pdp-color-btn.active { box-shadow: 0 0 0 2px var(--blanc), 0 0 0 4px var(--or); border-radius: 6px; }
+.pdp-color-btn .prod-color-dot { width: 40px; height: 40px; border-radius: 6px; border: 1px solid rgba(0,0,0,.15); }
 .pdp-sizes { display: flex; gap: 8px; flex-wrap: wrap; }
 .pdp-sizes .chip { cursor: default; }
 .pdp-sizes .chip.disabled { opacity: .4; cursor: not-allowed; }
