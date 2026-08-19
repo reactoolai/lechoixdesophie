@@ -694,6 +694,21 @@ async function renderProductDetail() {
 
   const sizeChips = sizes.map((s) => `<button class="chip">${s}</button>`).join('');
 
+  function getSizesForColor(colorName) {
+    if (!colorName) return sizes;
+    const matrix = product.color_size_matrix;
+    if (!matrix || Object.keys(matrix).length === 0) return sizes;
+    const key = normalizeColorKey(colorName);
+    const colorSizes = matrix[key];
+    if (!colorSizes || colorSizes.length === 0) return sizes;
+    return sizes.filter((s) => colorSizes.includes(s));
+  }
+
+  function renderSizeChips(colorName) {
+    const available = getSizesForColor(colorName);
+    return available.map((s) => `<button class="chip">${s}</button>`).join('');
+  }
+
   container.innerHTML = `
     ${galleryHtml}
     <div class="pdp-info">
@@ -702,7 +717,7 @@ async function renderProductDetail() {
       <div class="pdp-price">${formatPrice(product.price)}</div>
       <div class="pdp-stock ${inStock ? 'in' : 'out'}">${inStock ? 'En stock' : 'Épuisé'}</div>
       ${colors.length > 0 ? `<div class="pdp-section"><div class="pdp-label">Couleurs</div><div class="pdp-colors" id="pdpColors">${colorDots}</div></div>` : ''}
-      ${sizes.length > 0 ? `<div class="pdp-section"><div class="pdp-label">Tailles</div><div class="pdp-sizes">${sizeChips}</div></div>` : ''}
+      ${sizes.length > 0 ? `<div class="pdp-section"><div class="pdp-label">Tailles</div><div class="pdp-sizes" id="pdpSizes">${sizeChips}</div></div>` : ''}
       <div class="pdp-section">
         <button class="btn pdp-add-cart">Ajouter au panier</button>
       </div>
@@ -780,6 +795,7 @@ async function renderProductDetail() {
 
   if (colors.length > 0 && colorImages.length > 0) {
     const thumbsEl = $('#pdpThumbs');
+    const sizesEl = $('#pdpSizes');
     container.querySelectorAll('.pdp-color-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const key = normalizeColorKey(btn.dataset.color);
@@ -797,6 +813,9 @@ async function renderProductDetail() {
           container.querySelectorAll('.pdp-color-btn').forEach((b) => b.classList.remove('active'));
           btn.classList.add('active');
           showImage(0);
+        }
+        if (sizesEl) {
+          sizesEl.innerHTML = renderSizeChips(btn.dataset.color);
         }
       });
     });

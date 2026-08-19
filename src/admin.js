@@ -430,6 +430,12 @@ async function openEditModal(product) {
         </div>
       </div>
 
+      <div class="admin-matrix-section" id="matrixSection">
+        <label style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);font-weight:500;display:block;margin-bottom:6px">Matrice couleurs / tailles</label>
+        <p style="font-size:13px;color:var(--gris);margin:0 0 12px">Toutes les tailles sont disponibles par défaut. Cliquez sur une case pour retirer une taille d'une couleur.</p>
+        <div id="editMatrix" style="overflow-x:auto"></div>
+      </div>
+
       <div class="admin-images-section">
         <label style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);font-weight:500;display:block;margin-bottom:10px">Photos par couleur</label>
         <div class="admin-upload-area" id="uploadArea">
@@ -505,17 +511,17 @@ async function openEditModal(product) {
     picker.addEventListener('input', (e) => {
       dot.style.background = e.target.value;
     });
-    div.querySelector('[data-action=remove-color]').addEventListener('click', () => { div.remove(); syncColorSelect(overlay); refreshImageDots(overlay); });
-    div.querySelector('[data-action=confirm-color]').addEventListener('click', () => { syncColorSelect(overlay); refreshImageDots(overlay); });
-    nameInput.addEventListener('blur', () => syncColorSelect(overlay));
+    div.querySelector('[data-action=remove-color]').addEventListener('click', () => { div.remove(); syncColorSelect(overlay); refreshImageDots(overlay); refreshMatrix(overlay); });
+    div.querySelector('[data-action=confirm-color]').addEventListener('click', () => { syncColorSelect(overlay); refreshImageDots(overlay); refreshMatrix(overlay); });
+    nameInput.addEventListener('blur', () => { syncColorSelect(overlay); refreshMatrix(overlay); });
   });
 
   overlay.querySelectorAll('[data-action=remove-color]').forEach((btn) => {
-    btn.addEventListener('click', () => { btn.closest('.admin-color-item').remove(); syncColorSelect(overlay); refreshImageDots(overlay); });
+    btn.addEventListener('click', () => { btn.closest('.admin-color-item').remove(); syncColorSelect(overlay); refreshImageDots(overlay); refreshMatrix(overlay); });
   });
 
   overlay.querySelectorAll('[data-action=confirm-color]').forEach((btn) => {
-    btn.addEventListener('click', () => { syncColorSelect(overlay); refreshImageDots(overlay); });
+    btn.addEventListener('click', () => { syncColorSelect(overlay); refreshImageDots(overlay); refreshMatrix(overlay); });
   });
 
   overlay.querySelectorAll('.color-name-input').forEach((input) => {
@@ -549,13 +555,16 @@ async function openEditModal(product) {
     chip.dataset.idx = idx;
     chip.innerHTML = `<span>${val}</span><button data-action="remove-size" data-idx="${idx}">&times;</button>`;
     sizesContainer.appendChild(chip);
-    chip.querySelector('[data-action=remove-size]').addEventListener('click', () => chip.remove());
+    chip.querySelector('[data-action=remove-size]').addEventListener('click', () => { chip.remove(); refreshMatrix(overlay); });
     input.value = '';
+    refreshMatrix(overlay);
   });
 
   overlay.querySelectorAll('[data-action=remove-size]').forEach((btn) => {
-    btn.addEventListener('click', () => btn.closest('.admin-size-chip').remove());
+    btn.addEventListener('click', () => { btn.closest('.admin-size-chip').remove(); refreshMatrix(overlay); });
   });
+
+  refreshMatrix(overlay);
 
   const fileInput = overlay.querySelector('#fileInput');
   const uploadArea = overlay.querySelector('#uploadArea');
@@ -719,6 +728,78 @@ function appendImageCard(grid, imgData, overlay) {
   grid.appendChild(card);
 }
 
+function refreshMatrix(overlay) {
+  const matrixEl = overlay.querySelector('#editMatrix');
+  if (!matrixEl) return;
+  const colorItems = Array.from(overlay.querySelectorAll('#editColors .admin-color-item'));
+  const colors = colorItems.map((item) => {
+    const name = item.querySelector('.color-name-input').value.trim();
+    if (!name) return null;
+    const hex = item.querySelector('.color-picker-input').value;
+    return { name, hex };
+  }).filter(Boolean);
+
+  const sizes = Array.from(overlay.querySelectorAll('#editSizes .admin-size-chip span'))
+    .map((span) => span.textContent.trim())
+    .filter(Boolean);
+
+  if (colors.length === 0 || sizes.length === 0) {
+    matrixEl.innerHTML = '<p style="font-size:13px;color:var(--gris)">Ajoutez des couleurs et des tailles pour configurer la matrice.</p>';
+    return;
+  }
+
+  const existingMatrix = editingProduct.color_size_matrix || {};
+  const sizeOrder = ['TP/XS','P/S','M/M','G/L','TG/XL','XXL','24','25','26','27','28','29','30','31','32','33','34','36','38','40','42','44','46','1/2','3/4','5/6','7/8','9/10','11/12','13/14'];
+  const sortedSizes = [...sizes].sort((a, b) => {
+    const ia = sizeOrder.indexOf(a);
+    const ib = sizeOrder.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  let html = '<table class="admin-matrix-table" style="border-collapse:collapse;font-size:13px"><thead><tr><th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--ivoire)"></th>';
+  sortedSizes.forEach((s) => {
+    html += `<th style="padding:6px 8px;text-align:center;border-bottom:2px solid var(--ivoire);font-weight:500;white-space:nowrap">${s}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  colors.forEach((c) => {
+    const key = normalizeColorKey(c.name);
+    const hex = c.hex || colorToHex(c.name);
+    const isMulti = hex === 'multi';
+    const colorSizes = existingMatrix[key];
+    html += `<tr><td style="padding:6px 10px;border-bottom:1px solid var(--ivoire);white-space:nowrap"><span class="admin-color-dot${isMulti ? ' dot-multi' : ''}" style="${isMulti ? '' : 'background:' + hex + ';display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:middle'}"></span><span style="vertical-align:middle">${c.name}</span></td>`;
+    sortedSizes.forEach((s) => {
+      const isAvailable = !colorSizes || colorSizes.includes(s);
+      html += `<td style="padding:4px;text-align:center;border-bottom:1px solid var(--ivoire)"><button class="matrix-cell${isAvailable ? ' active' : ''}" data-color="${key}" data-size="${s}" title="${isAvailable ? 'Disponible — cliquez pour retirer' : 'Indisponible — cliquez pour ajouter'}" style="width:28px;height:28px;border-radius:4px;border:1px solid ${isAvailable ? 'var(--or)' : '#ddd'};background:${isAvailable ? 'var(--or-clair)' : 'transparent'};cursor:pointer;color:${isAvailable ? 'var(--or-fonce)' : '#ccc'};font-size:11px;transition:all .15s">${isAvailable ? '✓' : '—'}</button></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  matrixEl.innerHTML = html;
+
+  matrixEl.querySelectorAll('.matrix-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      const colorKey = cell.dataset.color;
+      const size = cell.dataset.size;
+      const m = editingProduct.color_size_matrix || {};
+      if (!m[colorKey]) m[colorKey] = sortedSizes.slice();
+      const idx = m[colorKey].indexOf(size);
+      if (idx >= 0) m[colorKey].splice(idx, 1);
+      else m[colorKey].push(size);
+      editingProduct.color_size_matrix = m;
+      const isActive = cell.classList.toggle('active');
+      cell.style.border = isActive ? '1px solid var(--or)' : '1px solid #ddd';
+      cell.style.background = isActive ? 'var(--or-clair)' : 'transparent';
+      cell.style.color = isActive ? 'var(--or-fonce)' : '#ccc';
+      cell.textContent = isActive ? '✓' : '—';
+      cell.title = isActive ? 'Disponible — cliquez pour retirer' : 'Indisponible — cliquez pour ajouter';
+    });
+  });
+}
+
 async function saveProductEdit(overlay, closeModal) {
   const statusEl = overlay.querySelector('#saveStatus');
   if (statusEl) statusEl.textContent = 'Enregistrement…';
@@ -755,6 +836,7 @@ async function saveProductEdit(overlay, closeModal) {
     is_new: overlay.querySelector('#editIsNew').value === 'true',
     colors: colors,
     sizes: sizes,
+    color_size_matrix: editingProduct.color_size_matrix || {},
   };
 
   const { error } = await supabaseClient
