@@ -172,7 +172,7 @@ function updateSEOForProduct(product) {
 
 function updateSEOForCatalog(category) {
   const title = `${category} — ${SITE_NAME}`;
-  const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison partout au Québec dès 100 $.`;
+  const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison partout au Québec dès 150 $.`;
   const url = `${SITE_URL}/#/cat/${encodeURIComponent(category)}`;
 
   document.title = title;
@@ -191,7 +191,7 @@ function updateSEOForCatalog(category) {
 
 function updateSEOForHome() {
   document.title = `${SITE_NAME} — Boutique de mode féminine à Alma, Lac-Saint-Jean`;
-  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison partout au Québec dès 100 $.");
+  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison partout au Québec dès 150 $.");
   document.querySelector('link[rel="canonical"]').href = SITE_URL + '/';
   ensureMetaProperty('og:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
   ensureMetaProperty('og:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Du chic décontracté au glamour urbain.");
