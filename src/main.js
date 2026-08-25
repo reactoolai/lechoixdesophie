@@ -312,6 +312,10 @@ function parseRoute() {
     }
     return { page: 'checkout' };
   }
+  if (hash.startsWith('/recherche')) {
+    const query = new URLSearchParams(hash.split('?')[1] || '').get('q') || '';
+    return { page: 'search', query };
+  }
   if (hash.startsWith('/prod/')) {
     const numref = decodeURIComponent(hash.slice(6));
     return { page: 'product', numref };
@@ -346,6 +350,7 @@ async function renderCurrentPage() {
   const adminEl = $('#page-admin');
   const checkoutEl = $('#page-checkout');
   const confirmEl = $('#page-confirmation');
+  const searchEl = $('#page-search');
   const isAdmin = currentRoute.page === 'admin';
   const siteChrome = document.querySelectorAll('.bandeau, .utility, header, .news, footer');
   siteChrome.forEach((el) => { el.style.display = isAdmin ? 'none' : ''; });
@@ -355,6 +360,7 @@ async function renderCurrentPage() {
   if (adminEl) adminEl.style.display = 'none';
   if (checkoutEl) checkoutEl.style.display = 'none';
   if (confirmEl) confirmEl.style.display = 'none';
+  if (searchEl) searchEl.style.display = 'none';
 
   if (currentRoute.page === 'home') {
     homeEl.style.display = '';
@@ -370,6 +376,11 @@ async function renderCurrentPage() {
     renderProductDetail();
     const product = allProducts.find((p) => p.numref === currentRoute.numref);
     if (product) updateSEOForProduct(product);
+  } else if (currentRoute.page === 'search') {
+    if (searchEl) {
+      searchEl.style.display = '';
+      renderSearchResults(currentRoute.query);
+    }
   } else if (currentRoute.page === 'checkout') {
     if (checkoutEl) {
       checkoutEl.style.display = '';
@@ -758,7 +769,7 @@ async function renderProductDetail() {
         <button class="btn pdp-add-cart">Ajouter au panier</button>
       </div>
       <div class="pdp-meta">
-        <div><span>Numéro:</span> ${product.numref}</div>
+        <div><span>Numéro:</span> <span class="pdp-numref">${product.numref}</span> <button class="pdp-copy-ref" id="copyRefBtn" title="Copier la référence">Copier</button></div>
         ${product.fournisseur ? `<div><span>Marque:</span> ${product.fournisseur}</div>` : ''}
         ${product.subdept ? `<div><span>Type:</span> ${product.subdept}</div>` : ''}
       </div>
@@ -772,6 +783,17 @@ async function renderProductDetail() {
       await openEditModal(product);
       productImagesCache[product.numref] = null;
       renderProductDetail();
+    });
+  }
+
+  const copyBtn = $('#copyRefBtn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(product.numref).then(() => {
+        copyBtn.textContent = 'Copié !';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = 'Copier'; copyBtn.classList.remove('copied'); }, 1500);
+      }).catch(() => {});
     });
   }
 
@@ -1005,6 +1027,369 @@ function renderCartDrawer() {
     window.location.hash = '#/commande';
   });
   $('#cartContinue').addEventListener('click', closeCartDrawer);
+}
+
+/* ---------- Recherche ---------- */
+function normalizeSearch(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]+/g, ' ').trim();
+}
+
+function normalizeSku(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]/g, '');
+}
+
+function searchProducts(term) {
+  const normTerm = normalizeSearch(term);
+  if (!normTerm) return [];
+  const words = normTerm.split(/\s+/).filter(Boolean);
+  const skuTerm = normalizeSku(term);
+
+  const results = [];
+  for (const p of allProducts) {
+    const numref = normalizeSku(p.numref);
+    const desc = normalizeSearch(p.description);
+    const cat = normalizeSearch(p.category);
+    const dept = normalizeSearch(p.dept);
+    const subdept = normalizeSearch(p.subdept);
+    const fournisseur = normalizeSearch(p.fournisseur);
+    const season = normalizeSearch(p.season);
+    const colors = (Array.isArray(p.colors) ? p.colors : []).map((c) => normalizeSearch(colorName(c))).join(' ');
+    const sizes = (Array.isArray(p.sizes) ? p.sizes : []).map((s) => normalizeSearch(s)).join(' ');
+
+    const haystack = [numref, desc, cat, dept, subdept, fournisseur, season, colors, sizes].join(' ');
+    const allWordsMatch = words.every((w) => haystack.includes(w));
+    if (!allWordsMatch) continue;
+
+    let score = 0;
+    if (numref === skuTerm) score = 1000;
+    else if (numref.startsWith(skuTerm)) score = 900;
+    else if (desc.startsWith(normTerm)) score = 800;
+    else if (desc.includes(normTerm)) score = 700;
+    else if (fournisseur.includes(normTerm)) score = 600;
+    else if (cat.includes(normTerm)) score = 500;
+    else if (colors.includes(normTerm) || sizes.includes(normTerm)) score = 400;
+    else score = 300;
+
+    results.push({ product: p, score });
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.map((r) => r.product);
+}
+
+let searchState = { query: '', results: [], visibleCount: 24, filters: { inStock: false, colors: new Set(), sizes: new Set(), priceMin: null, priceMax: null }, sort: 'relevance' };
+
+function renderSearchResults(query) {
+  searchState.query = query || '';
+  searchState.visibleCount = 24;
+  searchState.filters = { inStock: false, colors: new Set(), sizes: new Set(), priceMin: null, priceMax: null };
+  searchState.sort = 'relevance';
+
+  const titleEl = $('#searchTitle');
+  const countEl = $('#searchCount');
+  const grid = $('#searchGrid');
+
+  if (searchState.query.trim() === '') {
+    titleEl.textContent = 'Recherche';
+    countEl.textContent = '';
+    grid.innerHTML = '<div class="loading-msg">Entrez un terme de recherche.</div>';
+    $('#searchLoadMoreWrap').style.display = 'none';
+    return;
+  }
+
+  searchState.results = searchProducts(searchState.query);
+  titleEl.textContent = `${searchState.results.length} résultat${searchState.results.length > 1 ? 's' : ''} pour « ${searchState.query} »`;
+
+  buildSearchFilterChips();
+  renderSearchGrid();
+
+  if (searchState.results.length === 0) {
+    countEl.textContent = '';
+    grid.innerHTML = `<div class="loading-msg">Aucun produit ne correspond à « ${searchState.query} ». Essayez une autre recherche ou parcourez nos catégories :</div>`;
+    const catLinks = document.createElement('div');
+    catLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;justify-content:center';
+    ['Nouveautés', 'Robes', 'Jupes', 'Blouses', 'Pantalons', 'Vestes & Manteaux'].forEach((cat) => {
+      const a = ce('a', { href: `#/cat/${encodeURIComponent(cat)}`, class: 'btn-outline' });
+      a.textContent = cat;
+      a.style.cssText = 'display:inline-block;padding:10px 24px;border-radius:999px;font-size:13px;text-decoration:none';
+      catLinks.appendChild(a);
+    });
+    grid.appendChild(catLinks);
+    $('#searchLoadMoreWrap').style.display = 'none';
+  }
+}
+
+function buildSearchFilterChips() {
+  const products = searchState.results;
+  const colorMap = new Map();
+  const sizeSet = new Set();
+  products.forEach((p) => {
+    (Array.isArray(p.colors) ? p.colors : []).forEach((c) => {
+      if (c) {
+        const key = colorKey(c);
+        if (!colorMap.has(key)) colorMap.set(key, c);
+      }
+    });
+    (Array.isArray(p.sizes) ? p.sizes : []).forEach((s) => { if (s) sizeSet.add(s); });
+  });
+
+  const colorsContainer = $('#searchFilterColors');
+  colorsContainer.innerHTML = '';
+  colorsContainer.className = 'color-swatches';
+  [...colorMap.keys()].sort().forEach((key) => {
+    const color = colorMap.get(key);
+    const hex = colorToHex(color);
+    const name = colorName(color);
+    const swatch = ce('button', { class: 'color-swatch', title: name, 'aria-label': name });
+    if (hex === 'multi') swatch.classList.add('swatch-multi');
+    else swatch.style.setProperty('--swatch-color', hex);
+    swatch.addEventListener('click', () => {
+      if (searchState.filters.colors.has(key)) { searchState.filters.colors.delete(key); swatch.classList.remove('active'); }
+      else { searchState.filters.colors.add(key); swatch.classList.add('active'); }
+      searchState.visibleCount = 24;
+      renderSearchGrid();
+    });
+    colorsContainer.append(swatch);
+  });
+
+  const sizesContainer = $('#searchFilterSizes');
+  sizesContainer.innerHTML = '';
+  const sizeOrder = ['TP/XS','P/S','M/M','G/L','TG/XL','XXL','24','25','26','27','28','29','30','31','32','33','34','36','38','40','42','44','46','1/2','3/4','5/6','7/8','9/10','11/12','13/14'];
+  const sortedSizes = [...sizeSet].sort((a, b) => {
+    const ia = sizeOrder.indexOf(a), ib = sizeOrder.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  sortedSizes.forEach((size) => {
+    const chip = ce('button', { class: 'chip' });
+    chip.textContent = size;
+    chip.addEventListener('click', () => {
+      if (searchState.filters.sizes.has(size)) { searchState.filters.sizes.delete(size); chip.classList.remove('active'); }
+      else { searchState.filters.sizes.add(size); chip.classList.add('active'); }
+      searchState.visibleCount = 24;
+      renderSearchGrid();
+    });
+    sizesContainer.append(chip);
+  });
+}
+
+function getFilteredSearchResults() {
+  let products = [...searchState.results];
+  const f = searchState.filters;
+  if (f.inStock) products = products.filter((p) => p.total_qt > 0);
+  if (f.colors.size > 0) {
+    products = products.filter((p) => {
+      const colors = Array.isArray(p.colors) ? p.colors : [];
+      return colors.some((c) => f.colors.has(colorKey(c)));
+    });
+  }
+  if (f.sizes.size > 0) {
+    products = products.filter((p) => {
+      const sizes = Array.isArray(p.sizes) ? p.sizes : [];
+      return sizes.some((s) => f.sizes.has(s));
+    });
+  }
+  if (f.priceMin != null) products = products.filter((p) => parseFloat(p.price) >= f.priceMin);
+  if (f.priceMax != null) products = products.filter((p) => parseFloat(p.price) <= f.priceMax);
+
+  const sort = searchState.sort;
+  if (sort === 'price-asc') products.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+  else if (sort === 'price-desc') products.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+  else if (sort === 'name') products.sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
+  else if (sort === 'recent') products.sort((a, b) => (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0));
+
+  return products;
+}
+
+function renderSearchGrid() {
+  const products = getFilteredSearchResults();
+  const countEl = $('#searchCount');
+  const grid = $('#searchGrid');
+
+  countEl.textContent = `${products.length} produit${products.length > 1 ? 's' : ''}`;
+
+  if (products.length === 0) {
+    grid.innerHTML = '<div class="loading-msg">Aucun produit ne correspond à vos filtres.</div>';
+    $('#searchLoadMoreWrap').style.display = 'none';
+    return;
+  }
+
+  const visible = products.slice(0, searchState.visibleCount);
+  grid.innerHTML = '';
+  visible.forEach((p) => grid.append(buildProductCard(p)));
+
+  const hasMore = products.length > searchState.visibleCount;
+  $('#searchLoadMoreWrap').style.display = hasMore ? 'block' : 'none';
+}
+
+function setupSearch() {
+  const input = $('#searchInput');
+  const suggestionsEl = $('#searchSuggestions');
+  if (!input || !suggestionsEl) return;
+
+  let debounceTimer = null;
+  let currentResults = [];
+  let selectedIdx = -1;
+
+  function showSuggestions() {
+    if (currentResults.length === 0) { suggestionsEl.style.display = 'none'; return; }
+    const max = Math.min(8, currentResults.length);
+    let html = currentResults.slice(0, max).map((p, i) => {
+      const imgSrc = Array.isArray(p.images) && p.images.length > 0 ? imgUrl(p.images[0]) : FALLBACK_IMG;
+      return `<div class="search-suggestion ${i === selectedIdx ? 'active' : ''}" data-idx="${i}" data-numref="${p.numref}">
+        <img src="${imgSrc}" alt="" onerror="this.src='${FALLBACK_IMG}'">
+        <div class="search-suggestion-info">
+          <div class="search-suggestion-name">${p.description || ''}</div>
+          <div class="search-suggestion-sku">${p.numref}</div>
+        </div>
+        <div class="search-suggestion-price">${formatPrice(p.price)}</div>
+      </div>`;
+    }).join('');
+    html += `<div class="search-suggestion-all" data-count="${currentResults.length}">Voir les ${currentResults.length} résultats</div>`;
+    suggestionsEl.innerHTML = html;
+    suggestionsEl.style.display = 'block';
+
+    suggestionsEl.querySelectorAll('.search-suggestion').forEach((el) => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.idx);
+        const product = currentResults[idx];
+        if (product) {
+          const term = input.value.trim();
+          const skuTerm = normalizeSku(term);
+          if (normalizeSku(product.numref) === skuTerm) {
+            window.location.hash = `#/prod/${encodeURIComponent(product.numref)}`;
+          } else {
+            window.location.hash = `#/prod/${encodeURIComponent(product.numref)}`;
+          }
+          hideSuggestions();
+        }
+      });
+      el.addEventListener('mouseenter', () => {
+        selectedIdx = parseInt(el.dataset.idx);
+        updateActiveSuggestion();
+      });
+    });
+
+    const allBtn = suggestionsEl.querySelector('.search-suggestion-all');
+    if (allBtn) {
+      allBtn.addEventListener('click', () => {
+        window.location.hash = `#/recherche?q=${encodeURIComponent(input.value.trim())}`;
+        hideSuggestions();
+      });
+    }
+  }
+
+  function updateActiveSuggestion() {
+    suggestionsEl.querySelectorAll('.search-suggestion').forEach((el, i) => {
+      el.classList.toggle('active', i === selectedIdx);
+    });
+  }
+
+  function hideSuggestions() {
+    suggestionsEl.style.display = 'none';
+    selectedIdx = -1;
+  }
+
+  input.addEventListener('input', () => {
+    const term = input.value.trim();
+    if (!term) { hideSuggestions(); return; }
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const skuTerm = normalizeSku(term);
+      const exactSku = allProducts.find((p) => normalizeSku(p.numref) === skuTerm);
+      if (exactSku) {
+        window.location.hash = `#/prod/${encodeURIComponent(exactSku.numref)}`;
+        input.value = '';
+        hideSuggestions();
+        return;
+      }
+      currentResults = searchProducts(term);
+      selectedIdx = -1;
+      showSuggestions();
+    }, 200);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (suggestionsEl.style.display === 'none') {
+      if (e.key === 'Enter') {
+        const term = input.value.trim();
+        if (term) {
+          const skuTerm = normalizeSku(term);
+          const exactSku = allProducts.find((p) => normalizeSku(p.numref) === skuTerm);
+          if (exactSku) {
+            e.preventDefault();
+            window.location.hash = `#/prod/${encodeURIComponent(exactSku.numref)}`;
+            input.value = '';
+          } else {
+            e.preventDefault();
+            window.location.hash = `#/recherche?q=${encodeURIComponent(term)}`;
+            hideSuggestions();
+          }
+        }
+      }
+      return;
+    }
+    const max = Math.min(8, currentResults.length);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIdx = Math.min(selectedIdx + 1, max - 1);
+      updateActiveSuggestion();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIdx = Math.max(selectedIdx - 1, -1);
+      updateActiveSuggestion();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIdx >= 0 && currentResults[selectedIdx]) {
+        window.location.hash = `#/prod/${encodeURIComponent(currentResults[selectedIdx].numref)}`;
+        input.value = '';
+        hideSuggestions();
+      } else {
+        window.location.hash = `#/recherche?q=${encodeURIComponent(input.value.trim())}`;
+        hideSuggestions();
+      }
+    } else if (e.key === 'Escape') {
+      hideSuggestions();
+      input.blur();
+    }
+  });
+
+  input.addEventListener('focus', () => {
+    if (currentResults.length > 0) showSuggestions();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !suggestionsEl.contains(e.target)) hideSuggestions();
+  });
+
+  // Wire up search page filter controls
+  $('#searchFilterInStock')?.addEventListener('change', (e) => { searchState.filters.inStock = e.target.checked; searchState.visibleCount = 24; renderSearchGrid(); });
+  $('#searchPriceMin')?.addEventListener('input', () => { searchState.filters.priceMin = parseFloat($('#searchPriceMin').value) || null; searchState.visibleCount = 24; renderSearchGrid(); });
+  $('#searchPriceMax')?.addEventListener('input', () => { searchState.filters.priceMax = parseFloat($('#searchPriceMax').value) || null; searchState.visibleCount = 24; renderSearchGrid(); });
+  $('#searchSortSelect')?.addEventListener('change', (e) => { searchState.sort = e.target.value; searchState.visibleCount = 24; renderSearchGrid(); });
+  $('#searchResetFilters')?.addEventListener('click', () => {
+    searchState.filters = { inStock: false, colors: new Set(), sizes: new Set(), priceMin: null, priceMax: null };
+    $('#searchFilterInStock').checked = false;
+    $('#searchPriceMin').value = '';
+    $('#searchPriceMax').value = '';
+    searchState.visibleCount = 24;
+    buildSearchFilterChips();
+    renderSearchGrid();
+  });
+  $('#searchFilterToggle')?.addEventListener('click', () => {
+    $('#searchFilterSidebar').classList.add('open');
+    $('#searchFilterOverlay').classList.add('show');
+  });
+  $('#searchFilterOverlay')?.addEventListener('click', () => {
+    $('#searchFilterSidebar').classList.remove('open');
+    $('#searchFilterOverlay').classList.remove('show');
+  });
+  $('#searchLoadMoreBtn')?.addEventListener('click', () => { searchState.visibleCount += 24; renderSearchGrid(); });
+  document.querySelectorAll('#searchFilterSidebar .filter-title').forEach((title) => {
+    title.addEventListener('click', () => { title.closest('.filter-group').classList.toggle('collapsed'); });
+  });
 }
 
 /* ---------- Page caisse ---------- */
@@ -1320,19 +1705,8 @@ function setupEvents() {
     });
   });
 
-  $('#searchInput')?.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase().trim();
-    if (!term) return;
-    const results = allProducts.filter((p) =>
-      (p.description || '').toLowerCase().includes(term) ||
-      (p.fournisseur || '').toLowerCase().includes(term) ||
-      (p.category || '').toLowerCase().includes(term) ||
-      (p.season || '').toLowerCase().includes(term)
-    );
-    if (results.length > 0) {
-      window.location.hash = `#/cat/${results[0].category}`;
-    }
-  });
+  // --- Recherche ---
+  setupSearch();
 
   document.querySelector('.news-form')?.addEventListener('submit', (e) => {
     e.preventDefault();

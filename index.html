@@ -77,8 +77,9 @@
       <div class="search">
         <label>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#8A8377"/><path d="M11 11 L15 15" stroke="#8A8377" stroke-width="1.2"/></svg>
-          <input type="search" id="searchInput" placeholder="Rechercher un produit, une marque…">
+          <input type="search" id="searchInput" placeholder="Rechercher un produit, une marque…" autocomplete="off">
         </label>
+        <div class="search-suggestions" id="searchSuggestions" style="display:none"></div>
       </div>
       <div class="icons">
         <a href="#">
@@ -108,6 +109,73 @@
       <a href="#/cat/Accessoires">Accessoires</a>
     </nav>
   </header>
+
+  <!-- PAGE: RECHERCHE -->
+  <main id="page-search" style="display:none">
+    <div class="catalog-banner">
+      <div class="wrap">
+        <div class="breadcrumb"><a href="#/">Accueil</a> <span>/</span> <span>Recherche</span></div>
+        <h1 id="searchTitle">Recherche</h1>
+        <p id="searchCount" class="catalog-count"></p>
+      </div>
+    </div>
+    <div class="filter-overlay" id="searchFilterOverlay"></div>
+    <div class="wrap catalog-layout">
+      <aside class="filters" id="searchFilterSidebar">
+        <div class="filter-group collapsed">
+          <div class="filter-title">Disponibilité</div>
+          <div class="filter-content">
+            <label class="filter-opt"><input type="checkbox" id="searchFilterInStock"> <span>En stock seulement</span></label>
+          </div>
+        </div>
+        <div class="filter-group collapsed">
+          <div class="filter-title">Couleurs</div>
+          <div class="filter-content">
+            <div id="searchFilterColors" class="filter-chips"></div>
+          </div>
+        </div>
+        <div class="filter-group collapsed">
+          <div class="filter-title">Tailles</div>
+          <div class="filter-content">
+            <div id="searchFilterSizes" class="filter-chips"></div>
+          </div>
+        </div>
+        <div class="filter-group collapsed">
+          <div class="filter-title">Prix</div>
+          <div class="filter-content">
+            <div class="filter-price-row">
+              <input type="number" id="searchPriceMin" placeholder="Min $" class="price-input">
+              <span>—</span>
+              <input type="number" id="searchPriceMax" placeholder="Max $" class="price-input">
+            </div>
+          </div>
+        </div>
+        <button class="btn-outline filter-reset" id="searchResetFilters">Réinitialiser les filtres</button>
+      </aside>
+      <div class="catalog-main">
+        <div class="catalog-toolbar">
+          <div class="sort-wrap">
+            <label for="searchSortSelect">Trier par</label>
+            <select id="searchSortSelect" class="sort-select">
+              <option value="relevance">Pertinence</option>
+              <option value="recent">Plus récents</option>
+              <option value="price-asc">Prix croissant</option>
+              <option value="price-desc">Prix décroissant</option>
+              <option value="name">Nom A-Z</option>
+            </select>
+          </div>
+          <button class="filter-toggle" id="searchFilterToggle">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4h14M4 9h10M6 14h6" stroke="currentColor" stroke-width="1.3"/></svg>
+            Filtres
+          </button>
+        </div>
+        <div id="searchGrid" class="grid4"></div>
+        <div id="searchLoadMoreWrap" style="text-align:center; margin-top:40px; display:none">
+          <button class="btn-outline" id="searchLoadMoreBtn">Afficher plus</button>
+        </div>
+      </div>
+    </div>
+  </main>
 
   <!-- PAGE: ACCUEIL -->
   <main id="page-home">
