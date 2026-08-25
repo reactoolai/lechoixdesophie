@@ -218,16 +218,16 @@ export function statusUpdateSubject(orderNumber: string, status: string): string
   return subjects[status] || `Mise à jour de votre commande ${orderNumber}`;
 }
 
-export async function sendEmail(to: string | string[], subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string | string[], subject: string, html: string, replyTo?: string): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) {
     console.error("RESEND_API_KEY not configured");
     return;
   }
   const recipients = Array.isArray(to) ? to : [to];
-  const body = {
+  const body: Record<string, unknown> = {
     from: "Le Choix de Sophie <info@lechoixdesophie.com>",
-    reply_to: "info@lechoixdesophie.com",
+    reply_to: replyTo || "info@lechoixdesophie.com",
     to: recipients,
     subject,
     html,

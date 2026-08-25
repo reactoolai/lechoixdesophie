@@ -111,7 +111,16 @@ function buildMetaTags(opts) {
 function writePage(relPath, metaTags) {
   const fullPath = join(distDir, relPath, 'index.html');
   mkdirSync(dirname(fullPath), { recursive: true });
-  const html = templateHtml.replace('<!--SEO-->', metaTags);
+  let html = templateHtml
+    .replace(/  <title>[^<]*<\/title>\n/, '')
+    .replace(/  <meta name="description" content="[^"]*">\n/, '')
+    .replace(/  <meta name="keywords" content="[^"]*">\n/, '')
+    .replace(/  <meta name="author" content="[^"]*">\n/, '')
+    .replace(/  <meta name="robots" content="[^"]*">\n/, '')
+    .replace(/  <link rel="canonical" href="[^"]*">\n/, '')
+    .replace(/  <meta property="og:[^"]*" content="[^"]*">\n/g, '')
+    .replace(/  <meta name="twitter:[^"]*" content="[^"]*">\n/g, '')
+    .replace('<!--SEO-->', metaTags);
   writeFileSync(fullPath, html);
   console.log(`  ${relPath}`);
 }

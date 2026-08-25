@@ -57,6 +57,7 @@ Deno.serve(async (req: Request) => {
       "info@lechoixdesophie.com",
       `Nouveau message de ${name} — ${subject || "Formulaire de contact"}`,
       html,
+      email,
     );
 
     return new Response(
