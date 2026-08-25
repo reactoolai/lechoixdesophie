@@ -132,26 +132,37 @@ function removeJsonLd(id) {
 }
 
 function updateSEOForProduct(product) {
-  const title = `${product.description || 'Produit'} — ${SITE_NAME}`;
+  const title = `${product.description || 'Produit'}${product.fournisseur ? ' — ' + product.fournisseur : ''} | ${SITE_NAME}`;
+  const colors = (Array.isArray(product.colors) ? product.colors : []).map((c) => colorName(c)).filter(Boolean).join(', ');
+  const sizes = (Array.isArray(product.sizes) ? product.sizes : []).join(', ');
   const desc = product.description
-    ? `${product.description} — ${formatPrice(product.price)} chez ${SITE_NAME}, boutique de mode féminine à Alma. ${product.fournisseur ? 'Marque: ' + product.fournisseur + '. ' : ''}${product.category ? 'Catégorie: ' + product.category + '.' : ''}`
+    ? `${product.description}${colors ? ', ' + colors : ''}${sizes ? ', ' + sizes : ''} — ${formatPrice(product.price)} chez ${SITE_NAME}, boutique de mode féminine à Alma. Réf. ${product.numref}.`
     : `Mode féminine à Alma — ${SITE_NAME}`;
-  const url = `${SITE_URL}/#/prod/${encodeURIComponent(product.numref)}`;
+  const slug = productSlug(product);
+  const url = `${SITE_URL}/produit/${slug}`;
   const coverImg = Array.isArray(product.images) && product.images.length > 0
     ? imgUrl(product.images[0])
     : `${SITE_URL}/assets/lockup-sombre.png`;
+  const absImg = coverImg.startsWith('http') ? coverImg : `${SITE_URL}${coverImg}`;
 
   document.title = title;
   ensureMetaName('description', desc);
   document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:type', 'product');
+  ensureMetaProperty('og:site_name', SITE_NAME);
+  ensureMetaProperty('og:locale', 'fr_CA');
   ensureMetaProperty('og:title', title);
   ensureMetaProperty('og:description', desc);
   ensureMetaProperty('og:url', url);
-  ensureMetaProperty('og:type', 'product');
-  ensureMetaProperty('og:image', coverImg);
+  ensureMetaProperty('og:image', absImg);
+  ensureMetaProperty('og:image:width', '1200');
+  ensureMetaProperty('og:image:height', '1200');
+  ensureMetaProperty('product:price:amount', String(parseFloat(product.price) || 0));
+  ensureMetaProperty('product:price:currency', 'CAD');
+  ensureMetaName('twitter:card', 'summary_large_image');
   ensureMetaName('twitter:title', title);
   ensureMetaName('twitter:description', desc);
-  ensureMetaName('twitter:image', coverImg);
+  ensureMetaName('twitter:image', absImg);
 
   ensureJsonLd('ld-product', {
     '@context': 'https://schema.org',
@@ -161,49 +172,104 @@ function updateSEOForProduct(product) {
     sku: product.numref,
     brand: product.fournisseur ? { '@type': 'Brand', name: product.fournisseur } : undefined,
     category: product.category || undefined,
+    image: [absImg],
     offers: {
       '@type': 'Offer',
       price: parseFloat(product.price) || 0,
       priceCurrency: 'CAD',
-      availability: product.total_qt > 0 ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+      availability: product.total_qt > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       url: url,
+      itemCondition: 'https://schema.org/NewCondition',
     },
-    image: [coverImg],
+  });
+
+  const crumbs = [
+    { name: 'Accueil', url: SITE_URL + '/' },
+    product.category ? { name: product.category, url: `${SITE_URL}${categoryUrl(product.category)}` } : null,
+    { name: product.description || product.numref, url: url },
+  ].filter(Boolean);
+  ensureJsonLd('ld-breadcrumb', {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: c.name,
+      item: c.url,
+    })),
   });
 }
 
 function updateSEOForCatalog(category) {
   const title = `${category} — ${SITE_NAME}`;
   const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison 25 $, offerte dès 200 $.`;
-  const url = `${SITE_URL}/#/cat/${encodeURIComponent(category)}`;
+  const url = `${SITE_URL}${categoryUrl(category)}`;
 
   document.title = title;
   ensureMetaName('description', desc);
   document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:site_name', SITE_NAME);
+  ensureMetaProperty('og:locale', 'fr_CA');
   ensureMetaProperty('og:title', title);
   ensureMetaProperty('og:description', desc);
   ensureMetaProperty('og:url', url);
-  ensureMetaProperty('og:type', 'website');
   ensureMetaProperty('og:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  ensureMetaName('twitter:card', 'summary_large_image');
   ensureMetaName('twitter:title', title);
   ensureMetaName('twitter:description', desc);
   ensureMetaName('twitter:image', `${SITE_URL}/assets/lockup-sombre.png`);
   removeJsonLd('ld-product');
+  ensureJsonLd('ld-breadcrumb', {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Accueil', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: category, item: url },
+    ],
+  });
+}
+
+function updateSEOForPage(title, desc, path) {
+  const url = `${SITE_URL}${path}`;
+  document.title = title;
+  ensureMetaName('description', desc);
+  document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:site_name', SITE_NAME);
+  ensureMetaProperty('og:locale', 'fr_CA');
+  ensureMetaProperty('og:title', title);
+  ensureMetaProperty('og:description', desc);
+  ensureMetaProperty('og:url', url);
+  ensureMetaProperty('og:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  ensureMetaName('twitter:card', 'summary_large_image');
+  ensureMetaName('twitter:title', title);
+  ensureMetaName('twitter:description', desc);
+  ensureMetaName('twitter:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  removeJsonLd('ld-product');
+  removeJsonLd('ld-breadcrumb');
 }
 
 function updateSEOForHome() {
-  document.title = `${SITE_NAME} — Boutique de mode féminine à Alma, Lac-Saint-Jean`;
-  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison 25 $, offerte dès 200 $.");
-  document.querySelector('link[rel="canonical"]').href = SITE_URL + '/';
+  const title = `${SITE_NAME} — Boutique de mode féminine à Alma, Lac-Saint-Jean`;
+  const desc = "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison 25 $, offerte dès 200 $.";
+  const url = SITE_URL + '/';
+  document.title = title;
+  ensureMetaName('description', desc);
+  document.querySelector('link[rel="canonical"]').href = url;
+  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:site_name', SITE_NAME);
+  ensureMetaProperty('og:locale', 'fr_CA');
   ensureMetaProperty('og:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
   ensureMetaProperty('og:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Du chic décontracté au glamour urbain.");
-  ensureMetaProperty('og:url', SITE_URL + '/');
-  ensureMetaProperty('og:type', 'website');
+  ensureMetaProperty('og:url', url);
   ensureMetaProperty('og:image', `${SITE_URL}/assets/lockup-sombre.png`);
+  ensureMetaName('twitter:card', 'summary_large_image');
   ensureMetaName('twitter:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
   ensureMetaName('twitter:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean.");
   ensureMetaName('twitter:image', `${SITE_URL}/assets/lockup-sombre.png`);
   removeJsonLd('ld-product');
+  removeJsonLd('ld-breadcrumb');
 }
 
 /* ---------- Chargement produits ---------- */
@@ -263,11 +329,11 @@ async function loadProducts() {
 
 /* ---------- Médias page d'accueil (vidéos catégories) ---------- */
 const CATEGORY_SLOTS_MEDIA = [
-  { key: 'cat-robes', catHref: '#/cat/Robes', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10614298-1----0-62c259edc6754d50a60a48755aeea829.jpg', label: 'Robes' },
-  { key: 'cat-shorts', catHref: '#/cat/Jupes', imgSrc: '', label: 'Shorts' },
-  { key: 'cat-jupes', catHref: '#/cat/Jupes', imgSrc: '', label: 'Jupes' },
-  { key: 'cat-tops', catHref: '#/cat/Pantalons', imgSrc: '', label: 'Tops' },
-  { key: 'cat-blouses', catHref: '#/cat/Blouses', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10613845-1----0-b156cfe09d324d459c1eb1ba49742c7a.jpg', label: 'Blouses' },
+  { key: 'cat-robes', catHref: '/categorie/robes', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10614298-1----0-62c259edc6754d50a60a48755aeea829.jpg', label: 'Robes' },
+  { key: 'cat-shorts', catHref: '/categorie/jupes', imgSrc: '', label: 'Shorts' },
+  { key: 'cat-jupes', catHref: '/categorie/jupes', imgSrc: '', label: 'Jupes' },
+  { key: 'cat-tops', catHref: '/categorie/pantalons', imgSrc: '', label: 'Tops' },
+  { key: 'cat-blouses', catHref: '/categorie/blouses', imgSrc: 'https://iwihwtpzrwyybumottcd.supabase.co/storage/v1/object/public/product-photos/products/10613845-1----0-b156cfe09d324d459c1eb1ba49742c7a.jpg', label: 'Blouses' },
 ];
 const VIDEO_STORAGE_PUBLIC = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/category-videos/`;
 
@@ -300,34 +366,121 @@ async function loadCategoryMedia() {
     grid.appendChild(a);
   }
 }
+/* ---------- Slug & category mapping ---------- */
+const CATEGORY_SLUGS = {
+  'nouveautes': 'Nouveautés',
+  'robes': 'Robes',
+  'jupes': 'Jupes',
+  'blouses': 'Blouses',
+  'pantalons': 'Pantalons',
+  'denim': 'Denim',
+  'vestes-manteaux': 'Vestes & Manteaux',
+  'combinaisons': 'Combinaisons',
+  'accessoires': 'Accessoires',
+};
+
+const CATEGORY_TO_SLUG = Object.fromEntries(
+  Object.entries(CATEGORY_SLUGS).map(([slug, cat]) => [cat.toLowerCase(), slug])
+);
+
+function slugify(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function productSlug(product) {
+  const desc = slugify(product.description || product.numref);
+  return `${product.numref}-${desc}`;
+}
+
+function productUrl(product) {
+  return `/produit/${productSlug(product)}`;
+}
+
+function categoryUrl(category) {
+  const slug = CATEGORY_TO_SLUG[category.toLowerCase()] || slugify(category);
+  return `/categorie/${slug}`;
+}
+
+function categoryFromSlug(slug) {
+  return CATEGORY_SLUGS[slug] || CATEGORY_SLUGS[slug.toLowerCase()] || slug;
+}
+
 function parseRoute() {
-  const hash = window.location.hash.slice(1);
-  if (hash === '/admin' || hash.startsWith('/admin')) {
-    return { page: 'admin' };
+  const path = window.location.pathname;
+  const query = new URLSearchParams(window.location.search).get('q') || '';
+
+  if (path === '/admin' || path.startsWith('/admin')) return { page: 'admin' };
+  if (path === '/commande') return { page: 'checkout' };
+  if (path.startsWith('/commande/confirmation/')) {
+    const orderNumber = decodeURIComponent(path.slice('/commande/confirmation/'.length));
+    return { page: 'confirmation', orderNumber };
   }
-  if (hash === '/commande' || hash.startsWith('/commande')) {
-    if (hash.startsWith('/commande/confirmation/')) {
-      const orderNumber = decodeURIComponent(hash.slice('/commande/confirmation/'.length));
-      return { page: 'confirmation', orderNumber };
-    }
-    return { page: 'checkout' };
+  if (path === '/recherche' || path.startsWith('/recherche')) return { page: 'search', query };
+  if (path.startsWith('/produit/')) {
+    const slug = decodeURIComponent(path.slice('/produit/'.length));
+    const numref = slug.split('-')[0];
+    return { page: 'product', numref, slug };
   }
-  if (hash.startsWith('/recherche')) {
-    const query = new URLSearchParams(hash.split('?')[1] || '').get('q') || '';
-    return { page: 'search', query };
+  if (path.startsWith('/categorie/')) {
+    const slug = decodeURIComponent(path.slice('/categorie/'.length));
+    const category = categoryFromSlug(slug);
+    return { page: 'catalog', category, slug };
   }
-  if (hash.startsWith('/prod/')) {
-    const numref = decodeURIComponent(hash.slice(6));
-    return { page: 'product', numref };
-  }
-  if (hash.startsWith('/cat/')) {
-    const category = decodeURIComponent(hash.slice(5));
-    return { page: 'catalog', category };
-  }
-  return { page: 'home', category: null };
+  if (path === '/a-propos') return { page: 'about' };
+  if (path === '/nous-joindre') return { page: 'contact' };
+  if (path === '/' || path === '') return { page: 'home' };
+  return { page: 'home' };
+}
+
+function navigateTo(path) {
+  history.pushState({}, '', path);
+  navigate();
+}
+
+function handleLinkClick(e) {
+  const a = e.target.closest('a');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href) return;
+  if (href.startsWith('#') || href.startsWith('http') || href.startsWith('tel:') || href.startsWith('mailto:')) return;
+  if (a.target === '_blank') return;
+  if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault();
+  navigateTo(href);
 }
 
 async function navigate() {
+  // Redirect old hash URLs to new path-based URLs
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#/')) {
+    const oldPath = hash.slice(1);
+    let newPath = '/';
+    if (oldPath.startsWith('/prod/')) {
+      const numref = decodeURIComponent(oldPath.slice(6));
+      const product = allProducts.find((p) => p.numref === numref);
+      newPath = product ? productUrl(product) : `/produit/${numref}`;
+    } else if (oldPath.startsWith('/cat/')) {
+      const cat = decodeURIComponent(oldPath.slice(5));
+      newPath = categoryUrl(cat);
+    } else if (oldPath.startsWith('/recherche')) {
+      const q = new URLSearchParams(oldPath.split('?')[1] || '').get('q') || '';
+      newPath = `/recherche?q=${encodeURIComponent(q)}`;
+    } else if (oldPath.startsWith('/commande/confirmation/')) {
+      newPath = `/commande/confirmation/${decodeURIComponent(oldPath.slice('/commande/confirmation/'.length))}`;
+    } else if (oldPath.startsWith('/commande')) {
+      newPath = '/commande';
+    } else if (oldPath.startsWith('/admin')) {
+      newPath = '/admin';
+    }
+    history.replaceState({}, '', newPath);
+  }
+
   currentRoute = parseRoute();
   if (currentRoute.page === 'catalog') {
     catalogState.category = currentRoute.category;
@@ -351,6 +504,8 @@ async function renderCurrentPage() {
   const checkoutEl = $('#page-checkout');
   const confirmEl = $('#page-confirmation');
   const searchEl = $('#page-search');
+  const aboutEl = $('#page-about');
+  const contactEl = $('#page-contact');
   const isAdmin = currentRoute.page === 'admin';
   const siteChrome = document.querySelectorAll('.bandeau, .utility, header, .news, footer');
   siteChrome.forEach((el) => { el.style.display = isAdmin ? 'none' : ''; });
@@ -361,6 +516,8 @@ async function renderCurrentPage() {
   if (checkoutEl) checkoutEl.style.display = 'none';
   if (confirmEl) confirmEl.style.display = 'none';
   if (searchEl) searchEl.style.display = 'none';
+  if (aboutEl) aboutEl.style.display = 'none';
+  if (contactEl) contactEl.style.display = 'none';
 
   if (currentRoute.page === 'home') {
     homeEl.style.display = '';
@@ -381,6 +538,12 @@ async function renderCurrentPage() {
       searchEl.style.display = '';
       renderSearchResults(currentRoute.query);
     }
+  } else if (currentRoute.page === 'about') {
+    if (aboutEl) aboutEl.style.display = '';
+    updateSEOForPage('À propos — Le Choix de Sophie', 'Boutique de mode féminine à Alma, au Lac-Saint-Jean. Du chic décontracté au glamour urbain.', '/a-propos');
+  } else if (currentRoute.page === 'contact') {
+    if (contactEl) contactEl.style.display = '';
+    updateSEOForPage('Nous joindre — Le Choix de Sophie', 'Contactez Le Choix de Sophie à Alma. Téléphone, courriel, heures d\'ouverture et formulaire de contact.', '/nous-joindre');
   } else if (currentRoute.page === 'checkout') {
     if (checkoutEl) {
       checkoutEl.style.display = '';
@@ -583,7 +746,7 @@ function buildProductCard(p) {
 
   card.innerHTML = `
     <div class="ph">
-      <a href="#/prod/${encodeURIComponent(p.numref)}" class="prod-link">
+      <a href="${productUrl(p)}" class="prod-link">
         <img src="${imgSrc}" alt="${p.description || ''}" loading="lazy" onerror="this.src='${FALLBACK_IMG}'">
       </a>
       ${tags.join('')}
@@ -593,7 +756,7 @@ function buildProductCard(p) {
       </button>
     </div>
     <div class="prod-info">
-      <a href="#/prod/${encodeURIComponent(p.numref)}" class="prod-link">
+      <a href="${productUrl(p)}" class="prod-link">
         <div class="prod-nom">${p.description || ''}</div>
         <div class="prod-bottom">
           <div class="prod-prix">${formatPrice(p.price)}</div>
@@ -631,7 +794,7 @@ function buildProductCard(p) {
         e.stopPropagation();
         e.preventDefault();
         if (hasVariants) {
-          window.location.hash = `#/prod/${encodeURIComponent(p.numref)}`;
+          navigateTo(productUrl(p));
         } else {
           addToCart({
             numref: p.numref,
@@ -673,11 +836,11 @@ async function renderProductDetail() {
 
   if (!product) {
     container.innerHTML = '<div class="loading-msg">Produit introuvable.</div>';
-    breadcrumb.innerHTML = '<a href="#/">Accueil</a> <span>/</span> <span>Produit introuvable</span>';
+    breadcrumb.innerHTML = '<a href="/">Accueil</a> <span>/</span> <span>Produit introuvable</span>';
     return;
   }
 
-  breadcrumb.innerHTML = `<a href="#/">Accueil</a> <span>/</span> <a href="#/cat/${encodeURIComponent(product.category)}">${product.category}</a> <span>/</span> <span>${product.description || ''}</span>`;
+  breadcrumb.innerHTML = `<a href="/">Accueil</a> <span>/</span> <a href="${categoryUrl(product.category)}">${product.category}</a> <span>/</span> <span>${product.description || ''}</span>`;
 
   const rawColors = Array.isArray(product.colors) ? product.colors.filter(Boolean) : [];
   const colors = [];
@@ -756,6 +919,9 @@ async function renderProductDetail() {
     return available.map((s) => `<button class="chip" data-size="${s}">${s}</button>`).join('');
   }
 
+  const shareUrl = `${SITE_URL}/produit/${productSlug(product)}`;
+  const shareImg = (Array.isArray(product.images) && product.images.length > 0 ? imgUrl(product.images[0]) : `${SITE_URL}/assets/lockup-sombre.png`).startsWith('http') ? (Array.isArray(product.images) && product.images.length > 0 ? imgUrl(product.images[0]) : `${SITE_URL}/assets/lockup-sombre.png`) : `${SITE_URL}${Array.isArray(product.images) && product.images.length > 0 ? imgUrl(product.images[0]) : '/assets/lockup-sombre.png'}`;
+
   container.innerHTML = `
     ${galleryHtml}
     <div class="pdp-info">
@@ -772,6 +938,18 @@ async function renderProductDetail() {
         <div><span>Numéro:</span> <span class="pdp-numref">${product.numref}</span> <button class="pdp-copy-ref" id="copyRefBtn" title="Copier la référence">Copier</button></div>
         ${product.fournisseur ? `<div><span>Marque:</span> ${product.fournisseur}</div>` : ''}
         ${product.subdept ? `<div><span>Type:</span> ${product.subdept}</div>` : ''}
+      </div>
+      <div class="pdp-share">
+        <div class="pdp-label">Partager</div>
+        <div class="pdp-share-btns">
+          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer" class="pdp-share-btn" aria-label="Partager sur Facebook" title="Facebook">FB</a>
+          <a href="https://www.facebook.com/dialog/send?app_id=&link=${encodeURIComponent(shareUrl)}&redirect_uri=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer" class="pdp-share-btn" aria-label="Partager sur Messenger" title="Messenger">M</a>
+          <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(product.description || '')}" target="_blank" rel="noopener noreferrer" class="pdp-share-btn" aria-label="Partager sur X" title="X">X</a>
+          <a href="https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&media=${encodeURIComponent(shareImg)}&description=${encodeURIComponent(product.description || '')}" target="_blank" rel="noopener noreferrer" class="pdp-share-btn" aria-label="Partager sur Pinterest" title="Pinterest">P</a>
+          <a href="https://wa.me/?text=${encodeURIComponent((product.description || '') + ' ' + shareUrl)}" target="_blank" rel="noopener noreferrer" class="pdp-share-btn" aria-label="Partager sur WhatsApp" title="WhatsApp">W</a>
+          <a href="mailto:?subject=${encodeURIComponent(product.description || '')}&body=${encodeURIComponent(shareUrl)}" class="pdp-share-btn" aria-label="Partager par courriel" title="Courriel">@</a>
+          <button class="pdp-share-btn pdp-copy-link" id="copyLinkBtn" aria-label="Copier le lien" title="Copier le lien">Lien</button>
+        </div>
       </div>
       ${currentUser ? `<div class="pdp-admin-bar"><button class="admin-btn" id="pdpEditBtn">Modifier ce produit</button></div>` : ''}
     </div>
@@ -793,6 +971,17 @@ async function renderProductDetail() {
         copyBtn.textContent = 'Copié !';
         copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = 'Copier'; copyBtn.classList.remove('copied'); }, 1500);
+      }).catch(() => {});
+    });
+  }
+
+  const copyLinkBtn = $('#copyLinkBtn');
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        copyLinkBtn.textContent = 'Copié !';
+        copyLinkBtn.classList.add('copied');
+        setTimeout(() => { copyLinkBtn.textContent = 'Lien'; copyLinkBtn.classList.remove('copied'); }, 1500);
       }).catch(() => {});
     });
   }
@@ -980,7 +1169,7 @@ function renderCartDrawer() {
   const cart = getCart();
 
   if (cart.length === 0) {
-    body.innerHTML = '<div class="cart-empty">Votre panier est vide.<br><br><a href="#/cat/Nouveautés">Découvrir les nouveautés</a></div>';
+    body.innerHTML = '<div class="cart-empty">Votre panier est vide.<br><br><a href="/categorie/nouveautes">Découvrir les nouveautés</a></div>';
     footer.innerHTML = '';
     return;
   }
@@ -1024,7 +1213,7 @@ function renderCartDrawer() {
 
   $('#cartCheckoutBtn').addEventListener('click', () => {
     closeCartDrawer();
-    window.location.hash = '#/commande';
+    navigateTo('/commande');
   });
   $('#cartContinue').addEventListener('click', closeCartDrawer);
 }
@@ -1109,7 +1298,7 @@ function renderSearchResults(query) {
     const catLinks = document.createElement('div');
     catLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;justify-content:center';
     ['Nouveautés', 'Robes', 'Jupes', 'Blouses', 'Pantalons', 'Vestes & Manteaux'].forEach((cat) => {
-      const a = ce('a', { href: `#/cat/${encodeURIComponent(cat)}`, class: 'btn-outline' });
+      const a = ce('a', { href: categoryUrl(cat), class: 'btn-outline' });
       a.textContent = cat;
       a.style.cssText = 'display:inline-block;padding:10px 24px;border-radius:999px;font-size:13px;text-decoration:none';
       catLinks.appendChild(a);
@@ -1259,9 +1448,9 @@ function setupSearch() {
           const term = input.value.trim();
           const skuTerm = normalizeSku(term);
           if (normalizeSku(product.numref) === skuTerm) {
-            window.location.hash = `#/prod/${encodeURIComponent(product.numref)}`;
+            navigateTo(productUrl(product));
           } else {
-            window.location.hash = `#/prod/${encodeURIComponent(product.numref)}`;
+            navigateTo(productUrl(product));
           }
           hideSuggestions();
         }
@@ -1275,7 +1464,7 @@ function setupSearch() {
     const allBtn = suggestionsEl.querySelector('.search-suggestion-all');
     if (allBtn) {
       allBtn.addEventListener('click', () => {
-        window.location.hash = `#/recherche?q=${encodeURIComponent(input.value.trim())}`;
+        navigateTo(`/recherche?q=${encodeURIComponent(input.value.trim())}`);
         hideSuggestions();
       });
     }
@@ -1300,7 +1489,7 @@ function setupSearch() {
       const skuTerm = normalizeSku(term);
       const exactSku = allProducts.find((p) => normalizeSku(p.numref) === skuTerm);
       if (exactSku) {
-        window.location.hash = `#/prod/${encodeURIComponent(exactSku.numref)}`;
+        navigateTo(productUrl(exactSku));
         input.value = '';
         hideSuggestions();
         return;
@@ -1320,11 +1509,11 @@ function setupSearch() {
           const exactSku = allProducts.find((p) => normalizeSku(p.numref) === skuTerm);
           if (exactSku) {
             e.preventDefault();
-            window.location.hash = `#/prod/${encodeURIComponent(exactSku.numref)}`;
+            navigateTo(productUrl(exactSku));
             input.value = '';
           } else {
             e.preventDefault();
-            window.location.hash = `#/recherche?q=${encodeURIComponent(term)}`;
+            navigateTo(`/recherche?q=${encodeURIComponent(term)}`);
             hideSuggestions();
           }
         }
@@ -1343,11 +1532,11 @@ function setupSearch() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (selectedIdx >= 0 && currentResults[selectedIdx]) {
-        window.location.hash = `#/prod/${encodeURIComponent(currentResults[selectedIdx].numref)}`;
+        navigateTo(productUrl(currentResults[selectedIdx]));
         input.value = '';
         hideSuggestions();
       } else {
-        window.location.hash = `#/recherche?q=${encodeURIComponent(input.value.trim())}`;
+        navigateTo(`/recherche?q=${encodeURIComponent(input.value.trim())}`);
         hideSuggestions();
       }
     } else if (e.key === 'Escape') {
@@ -1398,7 +1587,7 @@ let squareCard = null;
 function renderCheckout() {
   const cart = getCart();
   if (cart.length === 0) {
-    window.location.hash = '#/';
+    navigateTo('/');
     return;
   }
 
@@ -1606,7 +1795,7 @@ async function handleCheckoutSubmit() {
     }
 
     clearCart();
-    window.location.hash = `#/commande/confirmation/${data.order_number}`;
+    navigateTo(`/commande/confirmation/${data.order_number}`);
   } catch (fetchErr) {
     console.error('create-order fetch error:', fetchErr);
     showCheckoutError('Erreur de communication avec le serveur. Veuillez réessayer.');
@@ -1634,7 +1823,7 @@ function renderConfirmation(orderNumber) {
       <div class="confirmation-order-num">${orderNumber}</div>
       <p class="confirmation-email-note">Un courriel de confirmation vient d'être envoyé à votre adresse.</p>
       <div class="confirmation-continue">
-        <a href="#/" class="btn">Retour à la boutique</a>
+        <a href="/" class="btn">Retour à la boutique</a>
       </div>
     </div>`;
 }
@@ -1713,7 +1902,15 @@ function setupEvents() {
     alert('Merci ! Vous êtes maintenant abonnée à l\'infolettre du Choix de Sophie.');
   });
 
-  window.addEventListener('hashchange', navigate);
+  window.addEventListener('popstate', navigate);
+  document.addEventListener('click', handleLinkClick);
+
+  // Contact form
+  $('#contactForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    $('#contactFormMsg').style.display = 'block';
+    e.target.reset();
+  });
 }
 
 /* ---------- Auth ---------- */
@@ -1830,7 +2027,7 @@ function renderAuthState() {
     if (isAdmin) {
       const adminItem = ce('button', { class: 'auth-dropdown-item' });
       adminItem.textContent = 'Tableau de bord admin';
-      adminItem.addEventListener('click', () => { window.location.hash = '#/admin'; });
+      adminItem.addEventListener('click', () => { navigateTo('/admin'); });
       dropdown.append(emailLine, divider, adminItem, ce('div', { class: 'auth-dropdown-divider' }), logoutItem);
     } else {
       dropdown.append(emailLine, divider, logoutItem);

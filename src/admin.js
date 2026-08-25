@@ -137,7 +137,7 @@ async function renderAdmin(products) {
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M2 5l7 5 7-5" stroke="currentColor" stroke-width="1.2"/></svg>
             Infolettre
           </div>
-          <div class="admin-nav-item" onclick="window.location.hash='#/'">
+          <div class="admin-nav-item" onclick="window.location.href='/'">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9l6-6 6 6M5 7v8h8V7" stroke="currentColor" stroke-width="1.2"/></svg>
             Retour au site
           </div>

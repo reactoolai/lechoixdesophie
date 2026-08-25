@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr-CA">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,6 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://web.squarecdn.com/v1/square.js"></script>
+  <!--SEO-->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -63,9 +64,9 @@
     <div class="wrap">
       <div>Boutique — 630 Rue Sacré-Coeur O, Alma</div>
       <div class="utility-links">
-        <a href="#">Aide</a>
-        <a href="#">Carte-cadeau</a>
-        <a href="#">Suivi de commande</a>
+        <a href="/nous-joindre">Aide</a>
+        <a href="/nous-joindre">Nous joindre</a>
+        <a href="/a-propos">À propos</a>
         <a href="#">FR</a>
       </div>
     </div>
@@ -73,7 +74,7 @@
 
   <header>
     <div class="wrap headrow">
-      <a href="#/" class="logo"><em>le choix de</em><strong>SOPHIE<span>.</span></strong></a>
+      <a href="/" class="logo"><em>le choix de</em><strong>SOPHIE<span>.</span></strong></a>
       <div class="search">
         <label>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#8A8377"/><path d="M11 11 L15 15" stroke="#8A8377" stroke-width="1.2"/></svg>
@@ -98,15 +99,15 @@
       </div>
     </div>
     <nav class="wrap nav" id="mainNav">
-      <a href="#/cat/Nouveautés">Nouveautés</a>
-      <a href="#/cat/Robes">Robes</a>
-      <a href="#/cat/Jupes">Jupes</a>
-      <a href="#/cat/Blouses">Blouses</a>
-      <a href="#/cat/Pantalons">Pantalons</a>
-      <a href="#/cat/Denim">Denim</a>
-      <a href="#/cat/Vestes & Manteaux">Vestes &amp; Manteaux</a>
-      <a href="#/cat/Combinaisons">Combinaisons</a>
-      <a href="#/cat/Accessoires">Accessoires</a>
+      <a href="/categorie/nouveautes">Nouveautés</a>
+      <a href="/categorie/robes">Robes</a>
+      <a href="/categorie/jupes">Jupes</a>
+      <a href="/categorie/blouses">Blouses</a>
+      <a href="/categorie/pantalons">Pantalons</a>
+      <a href="/categorie/denim">Denim</a>
+      <a href="/categorie/vestes-manteaux">Vestes &amp; Manteaux</a>
+      <a href="/categorie/combinaisons">Combinaisons</a>
+      <a href="/categorie/accessoires">Accessoires</a>
     </nav>
   </header>
 
@@ -114,7 +115,7 @@
   <main id="page-search" style="display:none">
     <div class="catalog-banner">
       <div class="wrap">
-        <div class="breadcrumb"><a href="#/">Accueil</a> <span>/</span> <span>Recherche</span></div>
+        <div class="breadcrumb"><a href="/">Accueil</a> <span>/</span> <span>Recherche</span></div>
         <h1 id="searchTitle">Recherche</h1>
         <p id="searchCount" class="catalog-count"></p>
       </div>
@@ -180,14 +181,14 @@
   <!-- PAGE: ACCUEIL -->
   <main id="page-home">
     <section class="hero">
-      <img src="https://images.ctfassets.net/m5sbi73tpqpw/1Emjl3SKru0KuRbAdvkmIz/6a67876179dd6d9ad78376ab641818ff/CR_-_Frontpage_-_HS26_-_Desktop_-_NHB_-_M.jpg?w=2200&q=70" alt="Collection printemps 2026">
+      <img src="https://images.ctfassets.net/m5sbi73tpqpw/1Emjl3SKru0KuRbAdvkmIz/6a67876179dd6d9ad78376ab641818ff/CR_-_Frontpage_-_HS26_-_Desktop_-_NHB_-_M.jpg?w=2200&q=70" alt="Collection printemps 2026" fetchpriority="high">
       <div class="hero-overlay">
         <div class="wrap" style="width:100%">
           <div class="hero-card">
             <div class="surtitre">Printemps 2026</div>
             <h1>La nouvelle collection est arrivée</h1>
             <p>Mode féminine qui célèbre votre unicité — du chic décontracté au glamour urbain.</p>
-            <a href="#/cat/Nouveautés" class="btn">Découvrir</a>
+            <a href="/categorie/nouveautes" class="btn">Découvrir</a>
           </div>
         </div>
       </div>
@@ -202,7 +203,7 @@
     <section class="wrap s-pad">
       <div class="section-head">
         <h2>Nouveautés</h2>
-        <a href="#/cat/Nouveautés" class="tout-voir">Tout voir</a>
+        <a href="/categorie/nouveautes" class="tout-voir">Tout voir</a>
       </div>
       <div id="homePreviewGrid" class="grid4">
         <div class="loading-msg">Chargement des produits…</div>
@@ -217,7 +218,7 @@
           <div class="surtitre" style="color:#C9A962">Notre histoire</div>
           <h2>Une boutique, un regard, des pièces choisies une à une</h2>
           <p>Chaque saison, Sophie sélectionne des vêtements qui allient qualité, confort et caractère. Une mode pensée pour les femmes d'ici, à porter au quotidien comme dans les grandes occasions.</p>
-          <a href="#" class="btn-outline">Visiter la boutique — Alma</a>
+          <a href="/a-propos" class="btn-outline">Visiter la boutique — Alma</a>
         </div>
       </div>
     </section>
@@ -244,7 +245,7 @@
   <main id="page-catalog" style="display:none">
     <div class="catalog-banner">
       <div class="wrap">
-        <div class="breadcrumb" id="breadcrumb"><a href="#/">Accueil</a> <span>/</span> <span id="breadcrumbCat">Catégorie</span></div>
+        <div class="breadcrumb" id="breadcrumb"><a href="/">Accueil</a> <span>/</span> <span id="breadcrumbCat">Catégorie</span></div>
         <h1 id="catalogTitle">Catégorie</h1>
         <p id="catalogCount" class="catalog-count"></p>
       </div>
@@ -311,15 +312,72 @@
   <!-- PAGE: DETAIL PRODUIT -->
   <main id="page-product" style="display:none">
     <div class="wrap" style="padding-top:24px">
-      <div class="breadcrumb" id="productBreadcrumb"><a href="#/">Accueil</a></div>
+      <div class="breadcrumb" id="productBreadcrumb"><a href="/">Accueil</a></div>
     </div>
     <div class="wrap product-detail" id="productDetail"></div>
+  </main>
+
+  <!-- PAGE: A PROPOS -->
+  <main id="page-about" style="display:none">
+    <div class="wrap" style="padding-top:48px;padding-bottom:80px">
+      <div class="about-page">
+        <div class="surtitre">Notre histoire</div>
+        <h1>Le Choix de Sophie</h1>
+        <p class="about-lead">Boutique de mode féminine à Alma, au Lac-Saint-Jean, Le Choix de Sophie célèbre l'unicité de chaque femme à travers une sélection de vêtements choisis une à une.</p>
+        <div class="about-content">
+          <div class="about-text">
+            <h2>Une boutique, un regard</h2>
+            <p>Chaque saison, Sophie sélectionne des vêtements qui allient qualité, confort et caractère. Du chic décontracté au glamour urbain, la boutique offre une mode pensée pour les femmes d'ici, à porter au quotidien comme dans les grandes occasions.</p>
+            <h2>Un service personnalisé</h2>
+            <p>En boutique comme en ligne, Sophie et son équipe vous offrent des conseils adaptés à votre style et à votre morphologie. Retours faciles sous 30 jours, livraison partout au Québec à 25 $ et offerte dès 200 $ d'achat.</p>
+          </div>
+          <div class="about-img">
+            <img src="/assets/monogramme.png" alt="Le Choix de Sophie" style="object-fit:contain;padding:60px;background:var(--ivoire)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- PAGE: NOUS JOINDRE -->
+  <main id="page-contact" style="display:none">
+    <div class="wrap" style="padding-top:48px;padding-bottom:80px">
+      <div class="contact-page">
+        <div class="surtitre">Nous joindre</div>
+        <h1>Contactez-nous</h1>
+        <div class="contact-grid">
+          <div class="contact-info">
+            <h2>La boutique</h2>
+            <p>630 Rue Sacré-Coeur O<br>Alma (Québec) G8B 1M9</p>
+            <h2>Téléphone</h2>
+            <p><a href="tel:+14186627114">(418) 662-7114</a></p>
+            <h2>Heures d'ouverture</h2>
+            <p>Lundi à mercredi : 9 h 30 à 17 h<br>Jeudi et vendredi : 9 h 30 à 21 h<br>Samedi et dimanche : 10 h à 17 h</p>
+            <h2>Suivez-nous</h2>
+            <div class="contact-social">
+              <a href="https://www.facebook.com/lechoixdesophiealma" target="_blank" rel="noopener noreferrer">Facebook</a>
+              <a href="https://www.instagram.com/lechoixdesophie_alma/" target="_blank" rel="noopener noreferrer">Instagram</a>
+            </div>
+          </div>
+          <div class="contact-form-wrap">
+            <h2>Écrivez-nous</h2>
+            <form id="contactForm" class="contact-form">
+              <div class="form-row"><input type="text" name="name" placeholder="Votre nom" required></div>
+              <div class="form-row"><input type="email" name="email" placeholder="Votre courriel" required></div>
+              <div class="form-row"><textarea name="message" placeholder="Votre message" rows="6" required></textarea></div>
+              <button type="submit" class="btn">Envoyer</button>
+              <div id="contactFormMsg" style="margin-top:12px;font-size:14px;color:#4a7a4a;display:none">Merci ! Votre message a été envoyé.</div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- PAGE: CAISSE -->
   <main id="page-checkout" style="display:none">
     <div class="wrap" style="padding-top:24px">
-      <div class="breadcrumb"><a href="#/">Accueil</a> <span>/</span> <span>Commande</span></div>
+      <div class="breadcrumb"><a href="/">Accueil</a> <span>/</span> <span>Commande</span></div>
     </div>
     <div class="wrap checkout-layout">
       <div class="checkout-main">
@@ -368,17 +426,17 @@
       </div>
       <div class="foot-col">
         <div class="foot-titre">Magasiner</div>
-        <a href="#/cat/Nouveautés">Nouveautés</a>
-        <a href="#/cat/Robes">Robes</a>
-        <a href="#/cat/Jupes">Jupes</a>
-        <a href="#/cat/Blouses">Blouses</a>
+        <a href="/categorie/nouveautes">Nouveautés</a>
+        <a href="/categorie/robes">Robes</a>
+        <a href="/categorie/jupes">Jupes</a>
+        <a href="/categorie/blouses">Blouses</a>
       </div>
       <div class="foot-col">
         <div class="foot-titre">Aide</div>
-        <a href="#">Livraison &amp; retours</a>
-        <a href="#">Guide des tailles</a>
-        <a href="#">Nous joindre</a>
-        <a href="#">FAQ</a>
+        <a href="/nous-joindre">Livraison &amp; retours</a>
+        <a href="/nous-joindre">Guide des tailles</a>
+        <a href="/nous-joindre">Nous joindre</a>
+        <a href="/nous-joindre">FAQ</a>
       </div>
       <div class="foot-col">
         <div class="foot-titre">Boutique</div>
