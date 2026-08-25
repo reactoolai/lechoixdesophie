@@ -507,7 +507,7 @@ async function renderCurrentPage() {
   const aboutEl = $('#page-about');
   const contactEl = $('#page-contact');
   const isAdmin = currentRoute.page === 'admin';
-  const siteChrome = document.querySelectorAll('.bandeau, .utility, header, .news, footer');
+  const siteChrome = document.querySelectorAll('.bandeau, .utility, header, .news, footer, .boutiques-section');
   siteChrome.forEach((el) => { el.style.display = isAdmin ? 'none' : ''; });
   homeEl.style.display = 'none';
   catEl.style.display = 'none';
@@ -561,9 +561,52 @@ async function renderCurrentPage() {
     }
   }
   window.scrollTo(0, 0);
+  renderBoutiquesSection();
 }
 
 
+
+/* ---------- Section « Nos 3 boutiques » ---------- */
+const BOUTIQUES = [
+  { name: 'Le Choix de Sophie', desc: 'Mode féminine à Alma — des pièces choisies une à une, du chic décontracté au glamour urbain.', link: '/', internal: true },
+  { name: 'Le Mercier Alma', desc: 'Mercerie pour homme à Alma — chemises, costumes, polos et accessoires de marques sélectionnées, avec ajustements sur mesure en boutique.', link: 'https://lemercieralma.com', internal: false },
+  { name: 'Attitude Sports', desc: 'Vêtements et chaussures de sport pour toute la famille — performance, confort et style au quotidien.', link: 'https://attitudesport.ca', internal: false },
+];
+
+function renderBoutiquesSection() {
+  const container = $('#boutiquesSection');
+  if (!container) return;
+  const currentPath = window.location.pathname;
+  container.innerHTML = `
+    <div class="wrap boutiques-wrap">
+      <div class="boutiques-head">
+        <div class="surtitre">Nos trois adresses</div>
+        <h2>Découvrez nos trois boutiques</h2>
+        <p>Trois adresses, une même passion du vêtement bien choisi.</p>
+      </div>
+      <div class="boutiques-grid">
+        ${BOUTIQUES.map((b) => {
+          const isHere = b.internal && currentPath === b.link;
+          const logoSrc = b.name === 'Le Choix de Sophie' ? '/assets/monogramme.png'
+            : b.name === 'Le Mercier Alma' ? '/assets/monogramme.png'
+            : '/assets/monogramme.png';
+          return `
+          <div class="boutique-card${isHere ? ' current' : ''}">
+            <div class="boutique-img"><img src="${logoSrc}" alt="${b.name}" style="object-fit:contain;padding:40px;background:var(--ivoire)"></div>
+            <div class="boutique-body">
+              <img src="${logoSrc}" alt="" width="40" style="margin-bottom:12px;opacity:.8">
+              <h3>${b.name}</h3>
+              <p>${b.desc}</p>
+              ${isHere
+                ? '<span class="boutique-here">Vous êtes ici</span>'
+                : `<a href="${b.link}"${b.internal ? '' : ' target="_blank" rel="noopener noreferrer"'} class="btn-outline boutique-btn">Visiter</a>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
 
 /* ---------- Page d'accueil: aperçu ---------- */
 function renderHomePreview() {
@@ -1897,20 +1940,75 @@ function setupEvents() {
   // --- Recherche ---
   setupSearch();
 
-  document.querySelector('.news-form')?.addEventListener('submit', (e) => {
+  document.querySelector('#newsletterForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    alert('Merci ! Vous êtes maintenant abonnée à l\'infolettre du Choix de Sophie.');
+    const email = $('#newsletterEmail').value.trim();
+    const btn = $('#newsletterBtn');
+    const msg = $('#newsletterMsg');
+    btn.disabled = true;
+    btn.textContent = 'Inscription…';
+    try {
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .upsert({ email, source: 'footer' }, { onConflict: 'email', ignoreDuplicates: true });
+      if (error) throw error;
+      msg.textContent = 'Merci ! Vous êtes maintenant abonnée à l\'infolettre.';
+      msg.style.color = '#4a7a4a';
+      msg.style.display = 'block';
+      e.target.reset();
+    } catch (err) {
+      msg.textContent = 'Une erreur est survenue. Veuillez réessayer.';
+      msg.style.color = '#b03030';
+      msg.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'S\'abonner';
+    }
   });
 
   window.addEventListener('popstate', navigate);
   document.addEventListener('click', handleLinkClick);
 
   // Contact form
-  $('#contactForm')?.addEventListener('submit', (e) => {
+  $('#contactForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    $('#contactFormMsg').style.display = 'block';
-    e.target.reset();
+    const form = e.target;
+    const msg = $('#contactFormMsg');
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Envoi…';
+    msg.style.display = 'none';
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-form`;
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name: form.name.value.trim(),
+          email: form.email.value.trim(),
+          subject: form.subject?.value?.trim() || '',
+          message: form.message.value.trim(),
+        }),
+      });
+      if (!resp.ok) throw new Error('Erreur');
+      msg.textContent = 'Merci ! Votre message a été envoyé. Nous vous répondrons sous peu.';
+      msg.style.color = '#4a7a4a';
+      msg.style.display = 'block';
+      form.reset();
+    } catch (err) {
+      msg.textContent = 'Une erreur est survenue. Veuillez nous écrire à info@lechoixdesophie.com.';
+      msg.style.color = '#b03030';
+      msg.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Envoyer';
+    }
   });
+
+  renderBoutiquesSection();
 }
 
 /* ---------- Auth ---------- */

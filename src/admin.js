@@ -143,6 +143,12 @@ async function renderAdmin(products) {
           </div>
         </div>
         <div class="admin-content" id="adminContent"></div>
+        <div class="admin-provider-credit">
+          <span>Propulsé par</span>
+          <a href="https://reactool.ai" target="_blank" rel="noopener noreferrer" aria-label="Reactool AI">
+            <img src="/assets/logo_blanc_reactool_ai.png" alt="Reactool AI">
+          </a>
+        </div>
       </div>
     </div>
   `;
