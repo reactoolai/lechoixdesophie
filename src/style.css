@@ -504,6 +504,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 .boutiques-head p { font-size: 15px; color: var(--gris); font-weight: 300; margin: 0; }
 
 .boutiques-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.boutiques-grid-two { grid-template-columns: repeat(2, 1fr); max-width: 760px; margin: 0 auto; }
 .boutique-card { background: var(--blanc); border-radius: 8px; overflow: hidden; transition: box-shadow .25s, transform .25s; display: flex; flex-direction: column; }
 .boutique-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,.12); transform: translateY(-4px); }
 .boutique-card.current { border: 2px solid var(--or); }

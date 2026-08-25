@@ -568,9 +568,8 @@ async function renderCurrentPage() {
 
 /* ---------- Section « Nos 3 boutiques » ---------- */
 const BOUTIQUES = [
-  { name: 'Le Choix de Sophie', desc: 'Mode féminine à Alma — des pièces choisies une à une, du chic décontracté au glamour urbain.', link: '/', internal: true },
-  { name: 'Le Mercier Alma', desc: 'Mercerie pour homme à Alma — chemises, costumes, polos et accessoires de marques sélectionnées, avec ajustements sur mesure en boutique.', link: 'https://lemercieralma.com', internal: false },
-  { name: 'Attitude Sports', desc: 'Vêtements et chaussures de sport pour toute la famille — performance, confort et style au quotidien.', link: 'https://attitudesport.ca', internal: false },
+  { name: 'Le Mercier Alma', desc: 'Mercerie pour homme à Alma — chemises, costumes, polos et accessoires de marques sélectionnées, avec ajustements sur mesure en boutique.', link: 'https://lemercieralma.com', internal: false, logo: '/assets/lemercier-logo.jpg' },
+  { name: 'Attitude Sports', desc: 'Vêtements et chaussures de sport pour toute la famille — performance, confort et style au quotidien.', link: 'https://attitudesport.ca', internal: false, logo: '/assets/attitudesport-logo.png' },
 ];
 
 function renderBoutiquesSection() {
@@ -580,26 +579,21 @@ function renderBoutiquesSection() {
   container.innerHTML = `
     <div class="wrap boutiques-wrap">
       <div class="boutiques-head">
-        <div class="surtitre">Nos trois adresses</div>
-        <h2>Découvrez nos trois boutiques</h2>
-        <p>Trois adresses, une même passion du vêtement bien choisi.</p>
+        <div class="surtitre">Nos deux adresses</div>
+        <h2>Découvrez nos deux autres boutiques</h2>
+        <p>Deux autres adresses, une même passion du vêtement bien choisi.</p>
       </div>
-      <div class="boutiques-grid">
+      <div class="boutiques-grid boutiques-grid-two">
         ${BOUTIQUES.map((b) => {
-          const isHere = b.internal && currentPath === b.link;
-          const logoSrc = b.name === 'Le Choix de Sophie' ? '/assets/monogramme.png'
-            : b.name === 'Le Mercier Alma' ? '/assets/monogramme.png'
-            : '/assets/monogramme.png';
+          const logoSrc = b.logo || '/assets/monogramme.png';
           return `
-          <div class="boutique-card${isHere ? ' current' : ''}">
+          <div class="boutique-card">
             <div class="boutique-img"><img src="${logoSrc}" alt="${b.name}" style="object-fit:contain;padding:40px;background:var(--ivoire)"></div>
             <div class="boutique-body">
               <img src="${logoSrc}" alt="" width="40" style="margin-bottom:12px;opacity:.8">
               <h3>${b.name}</h3>
               <p>${b.desc}</p>
-              ${isHere
-                ? '<span class="boutique-here">Vous êtes ici</span>'
-                : `<a href="${b.link}"${b.internal ? '' : ' target="_blank" rel="noopener noreferrer"'} class="btn-outline boutique-btn">Visiter</a>`}
+              <a href="${b.link}" target="_blank" rel="noopener noreferrer" class="btn-outline boutique-btn">Visiter</a>
             </div>
           </div>`;
         }).join('')}
