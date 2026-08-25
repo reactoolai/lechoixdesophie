@@ -3,6 +3,10 @@ import './auth.css';
 import './admin.css';
 import { supabase } from './supabase.js';
 import { initAdmin, renderAdmin, openEditModal } from './admin.js';
+import {
+  getCart, addToCart, updateQty, removeFromCart, clearCart,
+  cartCount, cartSubtotal, updateBadge, getCartToken, FREE_SHIPPING_THRESHOLD,
+} from './cart.js';
 
 /* ---------- État ---------- */
 let currentUser = null;
@@ -95,8 +99,6 @@ function colorKey(color) {
   return normalizeColorKey(colorName(color));
 }
 
-let cartCount = 0;
-
 const SITE_URL = 'https://lechoixdesophie.com';
 const SITE_NAME = 'Le Choix de Sophie';
 
@@ -172,7 +174,7 @@ function updateSEOForProduct(product) {
 
 function updateSEOForCatalog(category) {
   const title = `${category} — ${SITE_NAME}`;
-  const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison partout au Québec dès 150 $.`;
+  const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison 25 $, offerte dès 200 $.`;
   const url = `${SITE_URL}/#/cat/${encodeURIComponent(category)}`;
 
   document.title = title;
@@ -191,7 +193,7 @@ function updateSEOForCatalog(category) {
 
 function updateSEOForHome() {
   document.title = `${SITE_NAME} — Boutique de mode féminine à Alma, Lac-Saint-Jean`;
-  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison partout au Québec dès 150 $.");
+  ensureMetaName('description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison 25 $, offerte dès 200 $.");
   document.querySelector('link[rel="canonical"]').href = SITE_URL + '/';
   ensureMetaProperty('og:title', `${SITE_NAME} — Boutique de mode féminine à Alma`);
   ensureMetaProperty('og:description', "Boutique de mode féminine à Alma, au Lac-Saint-Jean. Du chic décontracté au glamour urbain.");
@@ -303,6 +305,13 @@ function parseRoute() {
   if (hash === '/admin' || hash.startsWith('/admin')) {
     return { page: 'admin' };
   }
+  if (hash === '/commande' || hash.startsWith('/commande')) {
+    if (hash.startsWith('/commande/confirmation/')) {
+      const orderNumber = decodeURIComponent(hash.slice('/commande/confirmation/'.length));
+      return { page: 'confirmation', orderNumber };
+    }
+    return { page: 'checkout' };
+  }
   if (hash.startsWith('/prod/')) {
     const numref = decodeURIComponent(hash.slice(6));
     return { page: 'product', numref };
@@ -327,6 +336,7 @@ async function navigate() {
     $('#priceMax').value = '';
   }
   await renderCurrentPage();
+  closeCartDrawer();
 }
 
 async function renderCurrentPage() {
@@ -334,6 +344,8 @@ async function renderCurrentPage() {
   const catEl = $('#page-catalog');
   const prodEl = $('#page-product');
   const adminEl = $('#page-admin');
+  const checkoutEl = $('#page-checkout');
+  const confirmEl = $('#page-confirmation');
   const isAdmin = currentRoute.page === 'admin';
   const siteChrome = document.querySelectorAll('.bandeau, .utility, header, .news, footer');
   siteChrome.forEach((el) => { el.style.display = isAdmin ? 'none' : ''; });
@@ -341,6 +353,8 @@ async function renderCurrentPage() {
   catEl.style.display = 'none';
   prodEl.style.display = 'none';
   if (adminEl) adminEl.style.display = 'none';
+  if (checkoutEl) checkoutEl.style.display = 'none';
+  if (confirmEl) confirmEl.style.display = 'none';
 
   if (currentRoute.page === 'home') {
     homeEl.style.display = '';
@@ -356,6 +370,16 @@ async function renderCurrentPage() {
     renderProductDetail();
     const product = allProducts.find((p) => p.numref === currentRoute.numref);
     if (product) updateSEOForProduct(product);
+  } else if (currentRoute.page === 'checkout') {
+    if (checkoutEl) {
+      checkoutEl.style.display = '';
+      renderCheckout();
+    }
+  } else if (currentRoute.page === 'confirmation') {
+    if (confirmEl) {
+      confirmEl.style.display = '';
+      renderConfirmation(currentRoute.orderNumber);
+    }
   } else if (currentRoute.page === 'admin') {
     if (adminEl) {
       adminEl.style.display = '';
@@ -585,21 +609,33 @@ function buildProductCard(p) {
 
   const cartBtn = card.querySelector('.prod-cart-btn');
   if (cartBtn) {
-    cartBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      cartCount++;
-      const badge = document.querySelector('.badge');
-      if (badge) {
-        badge.textContent = cartCount;
-        badge.style.display = 'flex';
-      }
-      cartBtn.classList.add('added');
-      cartBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ajouté</span>';
-      setTimeout(() => {
-        cartBtn.classList.remove('added');
-        cartBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 5h2l2.5 12h11l2.5-9H6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.3" fill="currentColor"/><circle cx="17" cy="20" r="1.3" fill="currentColor"/></svg><span>Ajouter</span>';
-      }, 1200);
-    });
+    if (soldOut) {
+      cartBtn.disabled = true;
+      cartBtn.style.opacity = '0.5';
+      cartBtn.style.cursor = 'not-allowed';
+      cartBtn.innerHTML = '<span>Épuisé</span>';
+    } else {
+      const hasVariants = (colors.length > 0 || sizes.length > 0);
+      cartBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (hasVariants) {
+          window.location.hash = `#/prod/${encodeURIComponent(p.numref)}`;
+        } else {
+          addToCart({
+            numref: p.numref,
+            name: p.description || '',
+            image: imgSrc,
+            color: null,
+            size: null,
+            price: parseFloat(p.price) || 0,
+            quantity: 1,
+          });
+          showCartAddedFeedback(cartBtn);
+          openCartDrawer();
+        }
+      });
+    }
   }
 
   return card;
@@ -692,7 +728,7 @@ async function renderProductDetail() {
     return `<button class="pdp-color-btn" data-color="${name}" data-img="${firstImg || ''}"><span class="prod-color-dot" style="--swatch-color:${hex}" title="${name}"></span></button>`;
   }).join('');
 
-  const sizeChips = sizes.map((s) => `<button class="chip">${s}</button>`).join('');
+  const sizeChips = sizes.map((s) => `<button class="chip" data-size="${s}">${s}</button>`).join('');
 
   function getSizesForColor(colorName) {
     if (!colorName) return sizes;
@@ -706,7 +742,7 @@ async function renderProductDetail() {
 
   function renderSizeChips(colorName) {
     const available = getSizesForColor(colorName);
-    return available.map((s) => `<button class="chip">${s}</button>`).join('');
+    return available.map((s) => `<button class="chip" data-size="${s}">${s}</button>`).join('');
   }
 
   container.innerHTML = `
@@ -816,32 +852,418 @@ async function renderProductDetail() {
         }
         if (sizesEl) {
           sizesEl.innerHTML = renderSizeChips(btn.dataset.color);
+          attachSizeChipHandlers(sizesEl);
         }
       });
     });
   }
 
-  const addBtn = container.querySelector('.pdp-add-cart');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      cartCount++;
-      const badge = document.querySelector('.badge');
-      if (badge) {
-        badge.textContent = cartCount;
-        badge.style.display = 'flex';
-      }
-      addBtn.textContent = 'Ajouté au panier';
-      addBtn.classList.add('added');
-      setTimeout(() => {
-        addBtn.textContent = 'Ajouter au panier';
-        addBtn.classList.remove('added');
-      }, 1500);
+  function attachSizeChipHandlers(sizesEl) {
+    sizesEl.querySelectorAll('.chip[data-size]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        sizesEl.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
     });
   }
+
+  const sizesElInit = $('#pdpSizes');
+  if (sizesElInit) attachSizeChipHandlers(sizesElInit);
+
+  const addBtn = container.querySelector('.pdp-add-cart');
+  if (addBtn) {
+    if (soldOut) {
+      addBtn.disabled = true;
+      addBtn.textContent = 'Épuisé';
+    } else {
+      addBtn.addEventListener('click', () => {
+        const selectedColorBtn = container.querySelector('.pdp-color-btn.active');
+        const selectedSizeBtn = container.querySelector('.pdp-sizes .chip.active');
+        const selectedColor = selectedColorBtn ? selectedColorBtn.dataset.color : null;
+        const selectedSize = selectedSizeBtn ? selectedSizeBtn.textContent : null;
+
+        if (colors.length > 0 && !selectedColor) {
+          showPdpError(addBtn, 'Veuillez choisir une couleur.');
+          return;
+        }
+        if (sizes.length > 0 && !selectedSize) {
+          showPdpError(addBtn, 'Veuillez choisir une taille.');
+          return;
+        }
+
+        const imgSrc = galleryImages.length > 0 ? imgUrl(galleryImages[0]) : FALLBACK_IMG;
+        addToCart({
+          numref: product.numref,
+          name: product.description || '',
+          image: imgSrc,
+          color: selectedColor,
+          size: selectedSize,
+          price: parseFloat(product.price) || 0,
+          quantity: 1,
+        });
+        addBtn.textContent = 'Ajouté au panier !';
+        addBtn.classList.add('added');
+        setTimeout(() => {
+          addBtn.textContent = 'Ajouter au panier';
+          addBtn.classList.remove('added');
+        }, 1500);
+        openCartDrawer();
+      });
+    }
+  }
+}
+
+/* ---------- Helpers panier ---------- */
+function showCartAddedFeedback(btn) {
+  const origHTML = btn.innerHTML;
+  btn.classList.add('added');
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ajouté</span>';
+  setTimeout(() => {
+    btn.classList.remove('added');
+    btn.innerHTML = origHTML;
+  }, 1200);
+}
+
+function showPdpError(btn, msg) {
+  let err = btn.parentElement.querySelector('.pdp-error');
+  if (!err) {
+    err = ce('div', { class: 'pdp-error', style: 'color:#b03030;font-size:13px;margin-top:8px;' });
+    btn.parentElement.appendChild(err);
+  }
+  err.textContent = msg;
+  err.style.display = 'block';
+  clearTimeout(err._timer);
+  err._timer = setTimeout(() => { err.style.display = 'none'; }, 3000);
+}
+
+/* ---------- Tiroir panier ---------- */
+function openCartDrawer() {
+  renderCartDrawer();
+  $('#cartOverlay')?.classList.add('open');
+  $('#cartDrawer')?.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCartDrawer() {
+  $('#cartOverlay')?.classList.remove('open');
+  $('#cartDrawer')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderCartDrawer() {
+  const body = $('#cartDrawerBody');
+  const footer = $('#cartDrawerFooter');
+  if (!body || !footer) return;
+
+  const cart = getCart();
+
+  if (cart.length === 0) {
+    body.innerHTML = '<div class="cart-empty">Votre panier est vide.<br><br><a href="#/cat/Nouveautés">Découvrir les nouveautés</a></div>';
+    footer.innerHTML = '';
+    return;
+  }
+
+  body.innerHTML = '';
+  cart.forEach((item, i) => {
+    const el = ce('div', { class: 'cart-item' });
+    el.innerHTML = `
+      <img class="cart-item-img" src="${item.image || FALLBACK_IMG}" alt="" onerror="this.src='${FALLBACK_IMG}'">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name || ''}</div>
+        ${item.color || item.size ? `<div class="cart-item-variant">${[item.color, item.size].filter(Boolean).join(' / ')}</div>` : ''}
+        <div class="cart-item-price">${formatPrice(item.price)}</div>
+        <div class="cart-item-controls">
+          <button class="cart-qty-btn" data-act="dec">−</button>
+          <span class="cart-qty-val">${item.quantity}</span>
+          <button class="cart-qty-btn" data-act="inc">+</button>
+          <button class="cart-item-remove" data-act="remove">Retirer</button>
+        </div>
+      </div>`;
+    el.querySelector('[data-act="inc"]').addEventListener('click', () => { updateQty(i, item.quantity + 1); renderCartDrawer(); });
+    el.querySelector('[data-act="dec"]').addEventListener('click', () => { updateQty(i, item.quantity - 1); renderCartDrawer(); });
+    el.querySelector('[data-act="remove"]').addEventListener('click', () => { removeFromCart(i); renderCartDrawer(); });
+    body.appendChild(el);
+  });
+
+  const subtotal = cartSubtotal();
+  const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
+  const freeShipMsg = remaining > 0
+    ? `Plus que ${formatPrice(remaining)} pour la livraison gratuite`
+    : 'Livraison gratuite débloquée';
+
+  footer.innerHTML = `
+    <div class="cart-subtotal-row">
+      <span class="cart-subtotal-label">Sous-total</span>
+      <span class="cart-subtotal-val">${formatPrice(subtotal)}</span>
+    </div>
+    <div class="cart-free-ship ${remaining > 0 ? '' : 'qualified'}">${freeShipMsg}</div>
+    <button class="btn cart-checkout-btn" id="cartCheckoutBtn">Passer à la caisse</button>
+    <a class="cart-continue" id="cartContinue">Continuer mes achats</a>`;
+
+  $('#cartCheckoutBtn').addEventListener('click', () => {
+    closeCartDrawer();
+    window.location.hash = '#/commande';
+  });
+  $('#cartContinue').addEventListener('click', closeCartDrawer);
+}
+
+/* ---------- Page caisse ---------- */
+let squareCard = null;
+
+function renderCheckout() {
+  const cart = getCart();
+  if (cart.length === 0) {
+    window.location.hash = '#/';
+    return;
+  }
+
+  renderCheckoutSummary();
+
+  const form = $('#checkoutForm');
+  form.innerHTML = `
+    <div class="checkout-error" id="checkoutError"></div>
+
+    <div class="checkout-step">
+      <h2 class="checkout-step-title"><span class="checkout-step-num">1</span> Coordonnées</h2>
+      <div class="checkout-fields">
+        <div class="checkout-field"><label>Prénom <span class="req">*</span></label><input type="text" id="co-firstname" required></div>
+        <div class="checkout-field"><label>Nom <span class="req">*</span></label><input type="text" id="co-lastname" required></div>
+        <div class="checkout-field full"><label>Courriel <span class="req">*</span></label><input type="email" id="co-email" required></div>
+        <div class="checkout-field"><label>Téléphone</label><input type="tel" id="co-phone"></div>
+      </div>
+    </div>
+
+    <div class="checkout-step">
+      <h2 class="checkout-step-title"><span class="checkout-step-num">2</span> Mode de réception</h2>
+      <div class="checkout-fulfillment">
+        <label class="fulfillment-option selected" data-type="pickup">
+          <input type="radio" name="fulfillment" value="pickup" checked>
+          <div class="fulfillment-option-title">Ramassage en boutique</div>
+          <div class="fulfillment-option-desc">630 Rue Sacré-Coeur O, Alma (Québec)</div>
+          <div class="fulfillment-option-price">Gratuit</div>
+          <div class="fulfillment-option-desc" style="margin-top:6px">Lun–mer 9h30–17h · Jeu–ven 9h30–21h · Sam–dim 10h–17h</div>
+        </label>
+        <label class="fulfillment-option" data-type="delivery">
+          <input type="radio" name="fulfillment" value="delivery">
+          <div class="fulfillment-option-title">Livraison</div>
+          <div class="fulfillment-option-desc">Partout au Québec</div>
+          <div class="fulfillment-option-price">25 $ · gratuite dès 200 $</div>
+        </label>
+      </div>
+      <div class="fulfillment-detail" id="deliveryFields">
+        <div class="checkout-fields" style="margin-top:16px">
+          <div class="checkout-field full"><label>Adresse <span class="req">*</span></label><input type="text" id="co-address1"></div>
+          <div class="checkout-field full"><label>Appartement, suite (optionnel)</label><input type="text" id="co-address2"></div>
+          <div class="checkout-field"><label>Ville <span class="req">*</span></label><input type="text" id="co-city"></div>
+          <div class="checkout-field"><label>Province</label><select id="co-province"><option>Québec</option><option>Ontario</option><option>Nouveau-Brunswick</option><option>Colombie-Britannique</option><option>Alberta</option><option>Manitoba</option><option>Saskatchewan</option><option>Nouvelle-Écosse</option><option>Île-du-Prince-Édouard</option><option>Terre-Neuve-et-Labrador</option></select></div>
+          <div class="checkout-field"><label>Code postal <span class="req">*</span></label><input type="text" id="co-postal"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="checkout-step">
+      <h2 class="checkout-step-title"><span class="checkout-step-num">3</span> Paiement</h2>
+      <div id="card-container"></div>
+      <button class="btn checkout-submit" id="checkoutSubmit">Payer maintenant</button>
+    </div>`;
+
+  // Fulfillment toggle
+  form.querySelectorAll('.fulfillment-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      form.querySelectorAll('.fulfillment-option').forEach((o) => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      opt.querySelector('input').checked = true;
+      const isDelivery = opt.dataset.type === 'delivery';
+      $('#deliveryFields').classList.toggle('show', isDelivery);
+      renderCheckoutSummary();
+    });
+  });
+
+  // Square card
+  initSquareCard();
+
+  // Submit
+  $('#checkoutSubmit').addEventListener('click', handleCheckoutSubmit);
+}
+
+async function initSquareCard() {
+  const appId = import.meta.env.VITE_SQUARE_APP_ID;
+  const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+  if (!window.Square || !appId || !locationId) {
+    $('#card-container').innerHTML = '<p style="color:#b03030;font-size:14px;">Module de paiement indisponible. Veuillez réessayer ou nous contacter.</p>';
+    return;
+  }
+  try {
+    const payments = window.Square.payments(appId, locationId);
+    squareCard = await payments.card();
+    await squareCard.attach('#card-container');
+  } catch (err) {
+    console.error('Square init error:', err);
+    $('#card-container').innerHTML = '<p style="color:#b03030;font-size:14px;">Impossible de charger le module de paiement. Veuillez rafraîchir la page.</p>';
+  }
+}
+
+function renderCheckoutSummary() {
+  const summary = $('#checkoutSummary');
+  if (!summary) return;
+  const cart = getCart();
+  const subtotal = cartSubtotal();
+  const isDelivery = document.querySelector('.fulfillment-option[data-type="delivery"]')?.classList.contains('selected');
+  const ftype = isDelivery ? 'delivery' : 'pickup';
+  const shipping = ftype === 'pickup' ? 0 : subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 25;
+  const tps = Math.round((subtotal + shipping) * 0.05 * 100) / 100;
+  const tvq = Math.round((subtotal + shipping) * 0.09975 * 100) / 100;
+  const total = subtotal + shipping + tps + tvq;
+
+  let itemsHtml = cart.map((it) => `
+    <div class="summary-item">
+      <img class="summary-item-img" src="${it.image || FALLBACK_IMG}" alt="" onerror="this.src='${FALLBACK_IMG}'">
+      <div class="summary-item-info">
+        <div class="summary-item-name">${it.name || ''}</div>
+        ${it.color || it.size ? `<div class="summary-item-variant">${[it.color, it.size].filter(Boolean).join(' / ')}</div>` : ''}
+        <div class="summary-item-qty">Qté: ${it.quantity}</div>
+      </div>
+      <div class="summary-item-price">${formatPrice(it.price * it.quantity)}</div>
+    </div>`).join('');
+
+  summary.innerHTML = `
+    <h3>Récapitulatif</h3>
+    ${itemsHtml}
+    <div class="summary-totals">
+      <div class="row"><span>Sous-total</span><span>${formatPrice(subtotal)}</span></div>
+      <div class="row"><span>Livraison</span><span>${shipping === 0 ? 'Gratuite' : formatPrice(shipping)}</span></div>
+      <div class="row"><span>TPS (5%)</span><span>${formatPrice(tps)}</span></div>
+      <div class="row"><span>TVQ (9,975%)</span><span>${formatPrice(tvq)}</span></div>
+      <div class="row total"><span>Total</span><span>${formatPrice(total)}</span></div>
+    </div>
+    <p style="font-size:11px;color:var(--gris-clair);margin-top:12px;font-style:italic;">Les montants sont indicatifs et recalculés au paiement.</p>`;
+}
+
+async function handleCheckoutSubmit() {
+  const errBox = $('#checkoutError');
+  errBox.classList.remove('show');
+  const btn = $('#checkoutSubmit');
+
+  const firstName = $('#co-firstname').value.trim();
+  const lastName = $('#co-lastname').value.trim();
+  const email = $('#co-email').value.trim();
+  const phone = $('#co-phone').value.trim();
+  const fulfillmentType = document.querySelector('input[name="fulfillment"]:checked')?.value || 'pickup';
+
+  if (!firstName || !lastName) { showCheckoutError('Le prénom et le nom sont obligatoires.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showCheckoutError('Adresse courriel invalide.'); return; }
+  if (!squareCard) { showCheckoutError('Module de paiement non chargé. Veuillez rafraîchir la page.'); return; }
+
+  let shipping = {};
+  if (fulfillmentType === 'delivery') {
+    shipping = {
+      address1: $('#co-address1').value.trim(),
+      address2: $('#co-address2').value.trim(),
+      city: $('#co-city').value.trim(),
+      province: $('#co-province').value,
+      postal_code: $('#co-postal').value.trim(),
+    };
+    if (!shipping.address1 || !shipping.city || !shipping.postal_code) {
+      showCheckoutError('Adresse, ville et code postal obligatoires pour la livraison.');
+      return;
+    }
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Traitement du paiement…';
+
+  let tokenResult;
+  try {
+    tokenResult = await squareCard.tokenize();
+  } catch (tokenizeErr) {
+    showCheckoutError('Erreur lors de la lecture de la carte. Vérifiez les informations saisies.');
+    btn.disabled = false;
+    btn.textContent = 'Payer maintenant';
+    return;
+  }
+
+  if (tokenResult.status !== 'OK') {
+    showCheckoutError('Carte refusée. Vérifiez le numéro ou essayez une autre carte.');
+    btn.disabled = false;
+    btn.textContent = 'Payer maintenant';
+    return;
+  }
+
+  const cart = getCart();
+  const items = cart.map((it) => ({
+    numref: it.numref,
+    quantity: it.quantity,
+    color: it.color,
+    size: it.size,
+  }));
+
+  try {
+    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cart_token: getCartToken(),
+        customer: { first_name: firstName, last_name: lastName, email, phone },
+        fulfillment_type: fulfillmentType,
+        shipping,
+        items,
+        payment_token: tokenResult.token,
+      }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || data.error) {
+      showCheckoutError(data.error || 'Le paiement a échoué. Veuillez réessayer.');
+      btn.disabled = false;
+      btn.textContent = 'Payer maintenant';
+      return;
+    }
+
+    clearCart();
+    window.location.hash = `#/commande/confirmation/${data.order_number}`;
+  } catch (fetchErr) {
+    console.error('create-order fetch error:', fetchErr);
+    showCheckoutError('Erreur de communication avec le serveur. Veuillez réessayer.');
+    btn.disabled = false;
+    btn.textContent = 'Payer maintenant';
+  }
+}
+
+function showCheckoutError(msg) {
+  const errBox = $('#checkoutError');
+  errBox.textContent = msg;
+  errBox.classList.add('show');
+  errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ---------- Page confirmation ---------- */
+function renderConfirmation(orderNumber) {
+  const el = $('#confirmationContent');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="confirmation-box">
+      <div class="surtitre">Merci !</div>
+      <h1>Votre commande a été reçue</h1>
+      <p>Nous vous remercions de votre confiance. Voici votre numéro de commande :</p>
+      <div class="confirmation-order-num">${orderNumber}</div>
+      <p class="confirmation-email-note">Un courriel de confirmation vient d'être envoyé à votre adresse.</p>
+      <div class="confirmation-continue">
+        <a href="#/" class="btn">Retour à la boutique</a>
+      </div>
+    </div>`;
 }
 
 /* ---------- Navigation & events ---------- */
 function setupEvents() {
+  $('#cartClose')?.addEventListener('click', closeCartDrawer);
+  $('#cartOverlay')?.addEventListener('click', closeCartDrawer);
+  document.querySelectorAll('.icons a').forEach((a) => {
+    if (a.textContent.includes('Panier')) {
+      a.addEventListener('click', (e) => { e.preventDefault(); openCartDrawer(); });
+    }
+  });
+
   $('#loadMoreBtn')?.addEventListener('click', () => {
     catalogState.visibleCount += 24;
     renderCatalog();
@@ -1079,6 +1501,7 @@ async function init() {
     connexionLink.addEventListener('click', (e) => { e.preventDefault(); openAuth(); });
   }
 
+  updateBadge();
   navigate();
   await loadProducts();
   initAdmin(allProducts, supabase);

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Le Choix de Sophie — Boutique de mode féminine à Alma, Lac-Saint-Jean</title>
-  <meta name="description" content="Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison partout au Québec dès 150 $.">
+  <meta name="description" content="Boutique de mode féminine à Alma, au Lac-Saint-Jean. Vêtements choisis une à une par Sophie : du chic décontracté au glamour urbain. Livraison 25 $, offerte dès 200 $.">
   <meta name="keywords" content="mode féminine Alma, boutique vêtements Alma, mode Lac-Saint-Jean, robes, jupes, blouses, pantalons, denim, accessoires, Le Choix de Sophie">
   <meta name="author" content="Le Choix de Sophie">
   <meta name="robots" content="index, follow">
@@ -24,6 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://web.squarecdn.com/v1/square.js"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -56,7 +57,7 @@
 </head>
 <body>
 
-  <div class="bandeau">Livraison offerte dès 150 $ · Nouveautés du printemps 2026 en boutique et en ligne</div>
+  <div class="bandeau">Livraison 25 $ · offerte dès 200 $ · Nouveautés du printemps 2026 en boutique et en ligne</div>
 
   <div class="utility">
     <div class="wrap">
@@ -157,7 +158,7 @@
       <div class="services">
         <div>
           <div class="svc-titre">Livraison partout au Québec</div>
-          <div class="svc-desc">Offerte dès 150&nbsp;$ d'achat</div>
+          <div class="svc-desc">25 $ · offerte dès 200&nbsp;$ d'achat</div>
         </div>
         <div class="mid">
           <div class="svc-titre">Retours faciles</div>
@@ -247,10 +248,39 @@
     <div class="wrap product-detail" id="productDetail"></div>
   </main>
 
+  <!-- PAGE: CAISSE -->
+  <main id="page-checkout" style="display:none">
+    <div class="wrap" style="padding-top:24px">
+      <div class="breadcrumb"><a href="#/">Accueil</a> <span>/</span> <span>Commande</span></div>
+    </div>
+    <div class="wrap checkout-layout">
+      <div class="checkout-main">
+        <div id="checkoutForm"></div>
+      </div>
+      <aside class="checkout-summary" id="checkoutSummary"></aside>
+    </div>
+  </main>
+
+  <!-- PAGE: CONFIRMATION -->
+  <main id="page-confirmation" style="display:none">
+    <div class="wrap" id="confirmationContent"></div>
+  </main>
+
   <!-- PAGE: ADMIN -->
   <main id="page-admin" style="display:none">
     <div id="adminRoot"></div>
   </main>
+
+  <!-- TIROIR PANIER -->
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-header">
+      <h2>Votre panier</h2>
+      <button class="cart-drawer-close" id="cartClose" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="cart-drawer-body" id="cartDrawerBody"></div>
+    <div class="cart-drawer-footer" id="cartDrawerFooter"></div>
+  </aside>
 
   <section class="news">
     <div class="surtitre">Infolettre</div>
