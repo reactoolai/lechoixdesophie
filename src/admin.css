@@ -129,3 +129,36 @@
   .admin-stats { grid-template-columns: 1fr 1fr; }
   .admin-form-row { grid-template-columns: 1fr; }
 }
+
+/* ====== COMMANDES ====== */
+.admin-nav-badge { background: var(--or-fonce); color: var(--blanc); font-size: 10px; padding: 1px 7px; border-radius: 999px; margin-left: auto; font-weight: 500; }
+.admin-status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+.admin-order-detail { background: var(--blanc); border: 1px solid var(--ligne); border-radius: 8px; padding: 28px; margin-top: 20px; }
+.order-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.order-detail-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; }
+.order-detail-section { }
+.order-detail-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gris); font-weight: 500; margin-bottom: 12px; }
+.order-detail-info { font-size: 14px; line-height: 1.6; }
+.order-detail-info div { margin-bottom: 2px; }
+
+.order-item-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ligne); }
+.order-item-row .admin-thumb { width: 48px; height: 56px; border-radius: 4px; object-fit: cover; flex: 0 0 auto; }
+.order-item-info { flex: 1; min-width: 0; }
+.order-item-info div:first-child { font-size: 14px; }
+
+.order-totals { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ligne); }
+.order-totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: var(--gris); }
+.order-totals .row.total { border-top: 2px solid var(--or); margin-top: 8px; padding-top: 10px; font-size: 16px; font-weight: 700; color: var(--noir); }
+
+.order-status-control { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin-status-select { border: 1px solid var(--ligne); background: var(--blanc); padding: 8px 14px; font-family: 'Jost', sans-serif; font-size: 13px; border-radius: 6px; outline: none; }
+.admin-status-select:focus { border-color: var(--or); }
+
+.order-history { margin-top: 8px; }
+.history-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--gris); }
+.history-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+
+@media (max-width: 780px) {
+  .order-detail-grid { grid-template-columns: 1fr; gap: 24px; }
+}

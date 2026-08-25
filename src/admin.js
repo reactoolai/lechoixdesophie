@@ -124,6 +124,19 @@ async function renderAdmin(products) {
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M7 7l4 2-4 2V7z" fill="currentColor"/></svg>
             Vidéos accueil
           </div>
+          <div class="admin-nav-item ${adminView === 'orders' ? 'active' : ''}" data-view="orders">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v8H3z" stroke="currentColor" stroke-width="1.2"/><path d="M3 4l2 6h10l-2-6" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="14" r="1" fill="currentColor"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
+            Commandes
+            <span class="admin-nav-badge" id="ordersBadge" style="display:none"></span>
+          </div>
+          <div class="admin-nav-item ${adminView === 'carts' ? 'active' : ''}" data-view="carts">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12l-1 8H4z" stroke="currentColor" stroke-width="1.2"/><path d="M6 6V4a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.2"/></svg>
+            Paniers non finalisés
+          </div>
+          <div class="admin-nav-item ${adminView === 'newsletter' ? 'active' : ''}" data-view="newsletter">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M2 5l7 5 7-5" stroke="currentColor" stroke-width="1.2"/></svg>
+            Infolettre
+          </div>
           <div class="admin-nav-item" onclick="window.location.hash='#/'">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9l6-6 6 6M5 7v8h8V7" stroke="currentColor" stroke-width="1.2"/></svg>
             Retour au site
@@ -146,6 +159,11 @@ async function renderAdmin(products) {
   else if (adminView === 'products') renderProducts(content);
   else if (adminView === 'users') renderUsers(content);
   else if (adminView === 'media') renderMediaManager(content);
+  else if (adminView === 'orders') renderOrders(content);
+  else if (adminView === 'carts') renderCarts(content);
+  else if (adminView === 'newsletter') renderNewsletter(content);
+
+  updateOrdersBadge();
 }
 
 function renderDashboard(content) {
@@ -980,6 +998,448 @@ async function handleVideoDelete(mediaRow, slot, card) {
     return;
   }
   await loadMediaSlots();
+}
+
+/* ====== ONGLET COMMANDES ====== */
+const ORDER_STATUSES = [
+  { value: 'paid', label: 'Payée', color: '#2a7a4a' },
+  { value: 'preparing', label: 'En préparation', color: '#c08020' },
+  { value: 'ready_for_pickup', label: 'Prête pour ramassage', color: '#3a6a9a' },
+  { value: 'shipping', label: 'En livraison', color: '#3a6a9a' },
+  { value: 'delivered', label: 'Livrée', color: '#2a7a4a' },
+  { value: 'cancelled', label: 'Annulée', color: '#b03030' },
+];
+
+function statusLabel(val) { return ORDER_STATUSES.find((s) => s.value === val)?.label || val; }
+function statusColor(val) { return ORDER_STATUSES.find((s) => s.value === val)?.color || '#999'; }
+
+let allOrders = [];
+let orderFilterStatus = 'all';
+let orderFilterMode = 'all';
+let orderSearchTerm = '';
+let selectedOrderId = null;
+
+async function updateOrdersBadge() {
+  const { count } = await supabaseClient
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['paid', 'preparing']);
+  const badge = document.getElementById('ordersBadge');
+  if (!badge) return;
+  if (count && count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function renderOrders(content) {
+  content.innerHTML = `
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0 0 20px">Commandes</h2>
+    <div class="admin-toolbar">
+      <div class="admin-search"><input type="search" id="orderSearch" placeholder="N° commande, nom, courriel…" value="${orderSearchTerm}"></div>
+      <div class="admin-filter-confiance">
+        <label>Statut:</label>
+        <select id="orderStatusFilter">
+          <option value="all">Tous</option>
+          ${ORDER_STATUSES.map((s) => `<option value="${s.value}" ${orderFilterStatus === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="admin-filter-confiance">
+        <label>Mode:</label>
+        <select id="orderModeFilter">
+          <option value="all">Tous</option>
+          <option value="pickup" ${orderFilterMode === 'pickup' ? 'selected' : ''}>Ramassage</option>
+          <option value="delivery" ${orderFilterMode === 'delivery' ? 'selected' : ''}>Livraison</option>
+        </select>
+      </div>
+    </div>
+    <div class="admin-table" id="ordersTable"><div class="admin-loading">Chargement…</div></div>
+    <div id="orderDetailPanel"></div>
+  `;
+
+  document.getElementById('orderSearch').addEventListener('input', (e) => { orderSearchTerm = e.target.value; renderOrdersTable(); });
+  document.getElementById('orderStatusFilter').addEventListener('change', (e) => { orderFilterStatus = e.target.value; renderOrdersTable(); });
+  document.getElementById('orderModeFilter').addEventListener('change', (e) => { orderFilterMode = e.target.value; renderOrdersTable(); });
+
+  await loadOrders();
+}
+
+async function loadOrders() {
+  const { data, error } = await supabaseClient
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('loadOrders error:', error); return; }
+  allOrders = data || [];
+  renderOrdersTable();
+}
+
+function renderOrdersTable() {
+  let orders = allOrders;
+  if (orderFilterStatus !== 'all') orders = orders.filter((o) => o.status === orderFilterStatus);
+  if (orderFilterMode !== 'all') orders = orders.filter((o) => o.fulfillment_type === orderFilterMode);
+  if (orderSearchTerm) {
+    const t = orderSearchTerm.toLowerCase();
+    orders = orders.filter((o) =>
+      (o.order_number || '').toLowerCase().includes(t) ||
+      (o.customer_first_name || '').toLowerCase().includes(t) ||
+      (o.customer_last_name || '').toLowerCase().includes(t) ||
+      (o.customer_email || '').toLowerCase().includes(t)
+    );
+  }
+
+  const tableEl = document.getElementById('ordersTable');
+  if (!tableEl) return;
+  if (orders.length === 0) { tableEl.innerHTML = '<div class="admin-loading">Aucune commande trouvée.</div>'; return; }
+
+  tableEl.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>N° commande</th>
+          <th>Date</th>
+          <th>Client</th>
+          <th>Courriel</th>
+          <th>Mode</th>
+          <th>Total</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${orders.map((o) => {
+          const date = new Date(o.created_at).toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+          const mode = o.fulfillment_type === 'pickup' ? 'Ramassage' : 'Livraison';
+          const sc = statusColor(o.status);
+          return `
+            <tr class="order-row" data-id="${o.id}" style="cursor:pointer">
+              <td style="font-weight:500">${o.order_number}</td>
+              <td>${date}</td>
+              <td>${o.customer_first_name} ${o.customer_last_name}</td>
+              <td style="font-size:12px">${o.customer_email}</td>
+              <td>${mode}</td>
+              <td>${formatPrice(o.total)}</td>
+              <td><span class="admin-status-badge" style="background:${sc}1a;color:${sc};border:1px solid ${sc}55">${statusLabel(o.status)}</span></td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  tableEl.querySelectorAll('.order-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      selectedOrderId = row.dataset.id;
+      renderOrderDetail(row.dataset.id);
+    });
+  });
+}
+
+async function renderOrderDetail(orderId) {
+  const panel = document.getElementById('orderDetailPanel');
+  if (!panel) return;
+  const order = allOrders.find((o) => o.id === orderId);
+  if (!order) return;
+
+  panel.innerHTML = '<div class="admin-loading">Chargement du détail…</div>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const { data: items } = await supabaseClient.from('order_items').select('*').eq('order_id', orderId);
+  const { data: history } = await supabaseClient.from('order_status_history').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
+
+  const itemsHtml = (items || []).map((it) => {
+    const img = it.image_url ? (it.image_url.startsWith('http') ? it.image_url : adminImgUrl(it.image_url)) : FALLBACK_IMG;
+    return `
+      <div class="order-item-row">
+        <img src="${img}" onerror="this.src='${FALLBACK_IMG}'" class="admin-thumb">
+        <div class="order-item-info">
+          <div style="font-weight:500">${it.name}</div>
+          <div style="font-size:12px;color:var(--gris)">${[it.color, it.size].filter(Boolean).join(' / ') || ''}</div>
+          <div style="font-size:12px;color:var(--gris)">Qté: ${it.quantity} × ${formatPrice(it.unit_price)}</div>
+        </div>
+        <div style="font-weight:500">${formatPrice(it.line_total)}</div>
+      </div>`;
+  }).join('');
+
+  const historyHtml = (history || []).map((h) => {
+    const date = new Date(h.created_at).toLocaleString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `<div class="history-row"><span class="history-dot" style="background:${statusColor(h.status)}"></span><span style="font-weight:500">${statusLabel(h.status)}</span> — ${date}${h.email_sent ? ' <span style="color:#2a7a4a;font-size:11px">✉ courriel envoyé</span>' : ''}</div>`;
+  }).join('');
+
+  const fulfillmentDetail = order.fulfillment_type === 'pickup'
+    ? 'Ramassage en boutique — 630 Rue Sacré-Coeur O, Alma'
+    : [order.ship_address1, order.ship_address2, order.ship_city, order.ship_province, order.ship_postal_code].filter(Boolean).join(', ');
+
+  panel.innerHTML = `
+    <div class="admin-order-detail">
+      <div class="order-detail-header">
+        <h3 style="font-family:'Cormorant Garamond',serif;font-size:24px;margin:0">${order.order_number}</h3>
+        <button class="admin-btn admin-btn-sm admin-btn-outline" id="closeOrderDetail">Fermer</button>
+      </div>
+      <div class="order-detail-grid">
+        <div class="order-detail-section">
+          <div class="order-detail-label">Articles</div>
+          ${itemsHtml}
+          <div class="order-totals">
+            <div class="row"><span>Sous-total</span><span>${formatPrice(order.subtotal)}</span></div>
+            <div class="row"><span>Livraison</span><span>${order.shipping_total == 0 ? 'Gratuite' : formatPrice(order.shipping_total)}</span></div>
+            <div class="row"><span>TPS</span><span>${formatPrice(order.tps)}</span></div>
+            <div class="row"><span>TVQ</span><span>${formatPrice(order.tvq)}</span></div>
+            <div class="row total"><span>Total</span><span>${formatPrice(order.total)}</span></div>
+          </div>
+        </div>
+        <div class="order-detail-section">
+          <div class="order-detail-label">Client</div>
+          <div class="order-detail-info">
+            <div>${order.customer_first_name} ${order.customer_last_name}</div>
+            <div style="font-size:13px;color:var(--gris)">${order.customer_email}</div>
+            ${order.customer_phone ? `<div style="font-size:13px;color:var(--gris)">${order.customer_phone}</div>` : ''}
+            ${order.customer_note ? `<div style="font-size:13px;color:var(--gris);margin-top:6px;font-style:italic">Note: ${order.customer_note}</div>` : ''}
+          </div>
+          <div class="order-detail-label" style="margin-top:16px">Réception</div>
+          <div class="order-detail-info">${fulfillmentDetail}</div>
+          ${order.square_payment_id ? `<div class="order-detail-label" style="margin-top:16px">Paiement</div><div class="order-detail-info" style="font-size:12px;color:var(--gris)">Square ID: ${order.square_payment_id}</div>` : ''}
+          <div class="order-detail-label" style="margin-top:16px">Statut</div>
+          <div class="order-status-control">
+            <select id="orderStatusSelect" class="admin-status-select">
+              ${ORDER_STATUSES.map((s) => `<option value="${s.value}" ${order.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+            </select>
+            <button class="admin-btn admin-btn-sm" id="updateStatusBtn">Mettre à jour</button>
+            <span id="statusUpdateMsg" style="font-size:13px;margin-left:8px"></span>
+          </div>
+          <div class="order-detail-label" style="margin-top:16px">Historique</div>
+          <div class="order-history">${historyHtml || '<div style="font-size:13px;color:var(--gris)">Aucun historique.</div>'}</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('closeOrderDetail').addEventListener('click', () => { panel.innerHTML = ''; selectedOrderId = null; });
+
+  document.getElementById('updateStatusBtn').addEventListener('click', async () => {
+    const newStatus = document.getElementById('orderStatusSelect').value;
+    const msgEl = document.getElementById('statusUpdateMsg');
+    const btn = document.getElementById('updateStatusBtn');
+    btn.disabled = true;
+    msgEl.textContent = 'Mise à jour…';
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const jwt = session?.access_token;
+    if (!jwt) { msgEl.innerHTML = '<span style="color:#b03030">Session expirée</span>'; btn.disabled = false; return; }
+
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-order-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ order_id: orderId, status: newStatus }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) { msgEl.innerHTML = `<span style="color:#b03030">${data.error || 'Erreur'}</span>`; btn.disabled = false; return; }
+      const orderRef = allOrders.find((o) => o.id === orderId);
+      if (orderRef) orderRef.status = newStatus;
+      const emailStatus = ['preparing', 'ready_for_pickup', 'shipping', 'delivered'].includes(newStatus);
+      msgEl.innerHTML = emailStatus
+        ? `<span style="color:#2a7a4a">Statut mis à jour — courriel envoyé à ${order.customer_email}</span>`
+        : `<span style="color:#2a7a4a">Statut mis à jour</span>`;
+      btn.disabled = false;
+      renderOrdersTable();
+      renderOrderDetail(orderId);
+      updateOrdersBadge();
+    } catch (e) {
+      msgEl.innerHTML = '<span style="color:#b03030">Erreur de communication</span>';
+      btn.disabled = false;
+    }
+  });
+}
+
+/* ====== ONGLET PANIERS NON FINALISÉS ====== */
+let allCarts = [];
+let cartFilterEmailOnly = false;
+
+async function renderCarts(content) {
+  content.innerHTML = `
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0 0 20px">Paniers non finalisés</h2>
+    <div class="admin-toolbar">
+      <label class="admin-filter-confiance" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cartEmailOnly" ${cartFilterEmailOnly ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--or-fonce)">
+        <span style="font-size:13px">Avec courriel seulement</span>
+      </label>
+    </div>
+    <div class="admin-table" id="cartsTable"><div class="admin-loading">Chargement…</div></div>
+    <div id="cartDetailPanel"></div>
+  `;
+  document.getElementById('cartEmailOnly').addEventListener('change', (e) => { cartFilterEmailOnly = e.target.checked; renderCartsTable(); });
+  await loadCarts();
+}
+
+async function loadCarts() {
+  const { data, error } = await supabaseClient
+    .from('abandoned_carts')
+    .select('*')
+    .eq('status', 'active')
+    .order('last_seen_at', { ascending: false });
+  if (error) { console.error('loadCarts error:', error); return; }
+  allCarts = data || [];
+  renderCartsTable();
+}
+
+function renderCartsTable() {
+  let carts = allCarts;
+  if (cartFilterEmailOnly) carts = carts.filter((c) => c.email);
+
+  const tableEl = document.getElementById('cartsTable');
+  if (!tableEl) return;
+  if (carts.length === 0) { tableEl.innerHTML = '<div class="admin-loading">Aucun panier non finalisé.</div>'; return; }
+
+  tableEl.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Dernière activité</th>
+          <th>Courriel</th>
+          <th>Nom</th>
+          <th>Articles</th>
+          <th>Sous-total</th>
+          <th>Caisse</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${carts.map((c) => {
+          const date = new Date(c.last_seen_at).toLocaleString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || '—';
+          return `
+            <tr class="cart-row" data-id="${c.id}" style="cursor:pointer">
+              <td>${date}</td>
+              <td style="font-size:12px">${c.email || '<span style="color:var(--gris-clair)">inconnu</span>'}</td>
+              <td>${name}</td>
+              <td>${c.items_count || 0}</td>
+              <td>${formatPrice(c.subtotal)}</td>
+              <td>${c.reached_checkout ? '<span class="admin-status-badge" style="background:#c080201a;color:#c08020;border:1px solid #c0802055">A atteint la caisse</span>' : '—'}</td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  tableEl.querySelectorAll('.cart-row').forEach((row) => {
+    row.addEventListener('click', () => renderCartDetail(row.dataset.id));
+  });
+}
+
+function renderCartDetail(cartId) {
+  const panel = document.getElementById('cartDetailPanel');
+  if (!panel) return;
+  const cart = allCarts.find((c) => c.id === cartId);
+  if (!cart) return;
+
+  const items = Array.isArray(cart.items) ? cart.items : [];
+  const itemsHtml = items.map((it) => {
+    const img = it.image ? (it.image.startsWith('http') ? it.image : adminImgUrl(it.image)) : FALLBACK_IMG;
+    return `
+      <div class="order-item-row">
+        <img src="${img}" onerror="this.src='${FALLBACK_IMG}'" class="admin-thumb">
+        <div class="order-item-info">
+          <div style="font-weight:500">${it.name || ''}</div>
+          <div style="font-size:12px;color:var(--gris)">${[it.color, it.size].filter(Boolean).join(' / ') || ''}</div>
+          <div style="font-size:12px;color:var(--gris)">Qté: ${it.quantity} × ${formatPrice(it.price)}</div>
+        </div>
+        <div style="font-weight:500">${formatPrice((it.price || 0) * (it.quantity || 1))}</div>
+      </div>`;
+  }).join('');
+
+  const name = [cart.first_name, cart.last_name].filter(Boolean).join(' ') || '';
+  const emailSubject = 'Votre panier vous attend — Le Choix de Sophie';
+  const itemListText = items.map((it) => `- ${it.name || 'Article'}${it.color ? ' (' + it.color + ')' : ''}${it.size ? ' ' + it.size : ''} — Qté: ${it.quantity} — ${formatPrice((it.price || 0) * (it.quantity || 1))}`).join('\\n');
+  const emailBody = `Bonjour${name ? ' ' + name : ''},\\n\\nVous avez laissé des articles dans votre panier sur notre boutique. Voici un rappel de votre sélection :\\n\\n${itemListText}\\n\\nSous-total: ${formatPrice(cart.subtotal)}\\n\\nIl n'est pas trop tard pour finaliser votre commande ! Rendez-vous sur ${import.meta.env.VITE_SUPABASE_URL ? 'lechoixdesophie.com' : 'notre boutique'} pour compléter votre achat.\\n\\nÀ bientôt,\\nSophie — Le Choix de Sophie`;
+  const mailtoLink = cart.email ? `mailto:${cart.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}` : null;
+
+  panel.innerHTML = `
+    <div class="admin-order-detail">
+      <div class="order-detail-header">
+        <h3 style="font-family:'Cormorant Garamond',serif;font-size:24px;margin:0">Détail du panier</h3>
+        <button class="admin-btn admin-btn-sm admin-btn-outline" id="closeCartDetail">Fermer</button>
+      </div>
+      <div class="order-detail-grid">
+        <div class="order-detail-section">
+          <div class="order-detail-label">Articles (${items.length})</div>
+          ${itemsHtml || '<div style="font-size:13px;color:var(--gris)">Panier vide.</div>'}
+          <div class="order-totals">
+            <div class="row total"><span>Sous-total</span><span>${formatPrice(cart.subtotal)}</span></div>
+          </div>
+        </div>
+        <div class="order-detail-section">
+          <div class="order-detail-label">Client</div>
+          <div class="order-detail-info">
+            ${name || '<span style="color:var(--gris-clair)">Nom inconnu</span>'}
+            ${cart.email ? `<div style="font-size:13px;color:var(--gris)">${cart.email}</div>` : '<div style="font-size:13px;color:var(--gris-clair)">Courriel inconnu</div>'}
+            ${cart.phone ? `<div style="font-size:13px;color:var(--gris)">${cart.phone}</div>` : ''}
+          </div>
+          ${cart.reached_checkout ? '<div class="admin-status-badge" style="background:#c080201a;color:#c08020;border:1px solid #c0802055;margin-top:12px;display:inline-block;padding:4px 10px;border-radius:4px;font-size:12px">A atteint la caisse</div>' : ''}
+          ${mailtoLink ? `<button class="admin-btn admin-btn-sm" id="emailReminderBtn" style="margin-top:16px">Relancer par courriel</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('closeCartDetail').addEventListener('click', () => { panel.innerHTML = ''; });
+  const emailBtn = document.getElementById('emailReminderBtn');
+  if (emailBtn) emailBtn.addEventListener('click', () => { window.location.href = mailtoLink; });
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ====== ONGLET INFOLETTRE ====== */
+let allSubscribers = [];
+
+async function renderNewsletter(content) {
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0">Infolettre</h2>
+      <button class="admin-btn admin-btn-sm" id="exportCsvBtn">Exporter en CSV</button>
+    </div>
+    <div class="admin-stat-card" style="margin-bottom:20px">
+      <div class="admin-stat-num" id="subscriberCount">—</div>
+      <div class="admin-stat-label">Abonnés</div>
+    </div>
+    <div class="admin-table" id="newsletterTable"><div class="admin-loading">Chargement…</div></div>
+  `;
+
+  document.getElementById('exportCsvBtn').addEventListener('click', exportSubscribersCsv);
+
+  const { data, error } = await supabaseClient
+    .from('newsletter_subscribers')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('newsletter load error:', error); return; }
+  allSubscribers = data || [];
+
+  const countEl = document.getElementById('subscriberCount');
+  if (countEl) countEl.textContent = allSubscribers.length;
+
+  const tableEl = document.getElementById('newsletterTable');
+  if (allSubscribers.length === 0) { tableEl.innerHTML = '<div class="admin-loading">Aucun abonné pour le moment.</div>'; return; }
+
+  tableEl.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Courriel</th><th>Source</th><th>Date d'inscription</th></tr>
+      </thead>
+      <tbody>
+        ${allSubscribers.map((s) => {
+          const date = new Date(s.created_at).toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+          return `<tr><td style="font-weight:500">${s.email}</td><td>${s.source || 'footer'}</td><td style="font-size:12px;color:var(--gris)">${date}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function exportSubscribersCsv() {
+  if (allSubscribers.length === 0) return;
+  const rows = [['Courriel', 'Source', 'Date'], ...allSubscribers.map((s) => [s.email, s.source || 'footer', new Date(s.created_at).toISOString()])];
+  const csv = rows.map((r) => r.map((f) => `"${(f || '').replace(/"/g, '""')}"`).join(',')).join('\\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'infolettre-abonnes.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export { initAdmin, renderAdmin, openEditModal };
