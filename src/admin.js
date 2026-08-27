@@ -1,7 +1,6 @@
 import { supabase } from './supabase.js';
 
 let allProducts = [];
-let supabaseClient = null;
 let adminView = 'dashboard';
 let adminSearchTerm = '';
 let editingProduct = null;
@@ -78,9 +77,8 @@ function formatPrice(price) {
   return num.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
 }
 
-function initAdmin(products, sb) {
+function initAdmin(products) {
   allProducts = products;
-  supabaseClient = sb;
 }
 
 async function renderAdmin(products) {
@@ -88,7 +86,7 @@ async function renderAdmin(products) {
   const root = document.getElementById('adminRoot');
   if (!root) return;
 
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user ?? null;
   if (!user) {
     root.innerHTML = `
@@ -336,7 +334,7 @@ function syncColorSelect(overlay) {
 
 async function openEditModal(product) {
   editingProduct = product;
-  const { data: images } = await supabaseClient
+  const { data: images } = await supabase
     .from('product_images')
     .select('*')
     .eq('product_numref', product.numref)
@@ -604,7 +602,7 @@ async function openEditModal(product) {
   overlay.querySelectorAll('[data-action=delete-img]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const imgId = btn.dataset.id;
-      const { error } = await supabaseClient.from('product_images').delete().eq('id', imgId);
+      const { error } = await supabase.from('product_images').delete().eq('id', imgId);
       if (error) { alert('Erreur lors de la suppression de l\'image.'); return; }
       editingImages = editingImages.filter((img) => img.id !== imgId);
       btn.closest('.admin-image-card').remove();
@@ -617,7 +615,7 @@ async function openEditModal(product) {
         e.preventDefault();
         const imgId = card.dataset.id;
         const color = dot.dataset.color || null;
-        const { error } = await supabaseClient.from('product_images').update({ color }).eq('id', imgId);
+        const { error } = await supabase.from('product_images').update({ color }).eq('id', imgId);
         if (error) { alert('Erreur lors de l\'assignation de couleur.'); return; }
         const img = editingImages.find((i) => i.id === imgId);
         if (img) img.color = color;
@@ -647,7 +645,7 @@ async function handleFileUpload(files, overlay) {
     const fileName = `${editingProduct.numref}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const filePath = `products/${fileName}`;
 
-    const { error: uploadError } = await supabaseClient.storage
+    const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(filePath, file);
 
@@ -657,7 +655,7 @@ async function handleFileUpload(files, overlay) {
       continue;
     }
 
-    const { data: insertData, error: insertError } = await supabaseClient
+    const { data: insertData, error: insertError } = await supabase
       .from('product_images')
       .insert({ product_numref: editingProduct.numref, image_url: filePath, color, sort_order: editingImages.length })
       .select();
@@ -698,7 +696,7 @@ function refreshImageDots(overlay) {
       dot.addEventListener('click', async (e) => {
         e.preventDefault();
         const color = dot.dataset.color || null;
-        const { error } = await supabaseClient.from('product_images').update({ color }).eq('id', imgId);
+        const { error } = await supabase.from('product_images').update({ color }).eq('id', imgId);
         if (error) { alert('Erreur.'); return; }
         img.color = color;
         dotsContainer.querySelectorAll('.img-color-dot').forEach((d) => d.classList.remove('selected'));
@@ -733,7 +731,7 @@ function appendImageCard(grid, imgData, overlay) {
   `;
   card.querySelector('[data-action=delete-img]').addEventListener('click', async () => {
     const imgId = imgData.id;
-    const { error } = await supabaseClient.from('product_images').delete().eq('id', imgId);
+    const { error } = await supabase.from('product_images').delete().eq('id', imgId);
     if (error) { alert('Erreur.'); return; }
     editingImages = editingImages.filter((img) => img.id !== imgId);
     card.remove();
@@ -742,7 +740,7 @@ function appendImageCard(grid, imgData, overlay) {
     dot.addEventListener('click', async (e) => {
       e.preventDefault();
       const color = dot.dataset.color || null;
-      const { error } = await supabaseClient.from('product_images').update({ color }).eq('id', imgData.id);
+      const { error } = await supabase.from('product_images').update({ color }).eq('id', imgData.id);
       if (error) { alert('Erreur.'); return; }
       imgData.color = color;
       card.querySelectorAll('.img-color-dot').forEach((d) => d.classList.remove('selected'));
@@ -863,7 +861,7 @@ async function saveProductEdit(overlay, closeModal) {
     color_size_matrix: editingProduct.color_size_matrix || {},
   };
 
-  const { error } = await supabaseClient
+  const { error } = await supabase
     .from('products')
     .update(updates)
     .eq('numref', editingProduct.numref);
@@ -909,7 +907,7 @@ async function renderMediaManager(content) {
 }
 
 async function loadMediaSlots() {
-  const { data: mediaRows } = await supabaseClient
+  const { data: mediaRows } = await supabase
     .from('site_media')
     .select('*')
     .in('media_key', CATEGORY_SLOTS.map((s) => s.key));
@@ -965,7 +963,7 @@ async function handleVideoUpload(file, slot, card) {
   const ext = file.name.split('.').pop().toLowerCase();
   const fileName = `${slot.key}-${Date.now()}.${ext}`;
 
-  const { error: uploadError } = await supabaseClient.storage
+  const { error: uploadError } = await supabase.storage
     .from(VIDEO_BUCKET)
     .upload(fileName, file);
 
@@ -974,7 +972,7 @@ async function handleVideoUpload(file, slot, card) {
     return;
   }
 
-  const { error: upsertError } = await supabaseClient
+  const { error: upsertError } = await supabase
     .from('site_media')
     .upsert({ media_key: slot.key, media_type: 'video', url: fileName }, { onConflict: 'media_key' });
 
@@ -992,9 +990,9 @@ async function handleVideoDelete(mediaRow, slot, card) {
   if (!confirm(`Supprimer la vidéo pour « ${slot.label} » ? L'image par défaut sera réaffichée.`)) return;
 
   if (!mediaRow.url.startsWith('http')) {
-    await supabaseClient.storage.from(VIDEO_BUCKET).remove([mediaRow.url]);
+    await supabase.storage.from(VIDEO_BUCKET).remove([mediaRow.url]);
   }
-  const { error } = await supabaseClient
+  const { error } = await supabase
     .from('site_media')
     .delete()
     .eq('media_key', slot.key);
@@ -1026,7 +1024,7 @@ let orderSearchTerm = '';
 let selectedOrderId = null;
 
 async function updateOrdersBadge() {
-  const { count } = await supabaseClient
+  const { count } = await supabase
     .from('orders')
     .select('*', { count: 'exact', head: true })
     .in('status', ['paid', 'preparing']);
@@ -1073,7 +1071,7 @@ async function renderOrders(content) {
 }
 
 async function loadOrders() {
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabase
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false });
@@ -1149,8 +1147,8 @@ async function renderOrderDetail(orderId) {
   panel.innerHTML = '<div class="admin-loading">Chargement du détail…</div>';
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const { data: items } = await supabaseClient.from('order_items').select('*').eq('order_id', orderId);
-  const { data: history } = await supabaseClient.from('order_status_history').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
+  const { data: items } = await supabase.from('order_items').select('*').eq('order_id', orderId);
+  const { data: history } = await supabase.from('order_status_history').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
 
   const itemsHtml = (items || []).map((it) => {
     const img = it.image_url ? (it.image_url.startsWith('http') ? it.image_url : adminImgUrl(it.image_url)) : FALLBACK_IMG;
@@ -1227,7 +1225,7 @@ async function renderOrderDetail(orderId) {
     btn.disabled = true;
     msgEl.textContent = 'Mise à jour…';
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     const jwt = session?.access_token;
     if (!jwt) { msgEl.innerHTML = '<span style="color:#b03030">Session expirée</span>'; btn.disabled = false; return; }
 
@@ -1277,7 +1275,7 @@ async function renderCarts(content) {
 }
 
 async function loadCarts() {
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabase
     .from('abandoned_carts')
     .select('*')
     .eq('status', 'active')
@@ -1408,7 +1406,7 @@ async function renderNewsletter(content) {
 
   document.getElementById('exportCsvBtn').addEventListener('click', exportSubscribersCsv);
 
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabase
     .from('newsletter_subscribers')
     .select('*')
     .order('created_at', { ascending: false });
