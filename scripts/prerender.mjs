@@ -44,9 +44,13 @@ function ensureAbsoluteImg(filename) {
   return url.startsWith('http') ? url : `${SITE_URL}${url}`;
 }
 
+function ensureTrailingSlash(path) {
+  return path.endsWith('/') ? path : path + '/';
+}
+
 function buildMetaTags(opts) {
   const { title, desc, path, image, type = 'website', productPrice, productColors, productSizes, productNumref, productFournisseur, productCategory, productTotalQt } = opts;
-  const url = `${SITE_URL}${path}`;
+  const url = `${SITE_URL}${ensureTrailingSlash(path)}`;
   const absImage = image ? (image.startsWith('http') ? image : `${SITE_URL}${image}`) : `${SITE_URL}/assets/lockup-sombre.png`;
 
   let tags = `  <title>${title}</title>\n`;
@@ -93,7 +97,7 @@ function buildMetaTags(opts) {
     };
     const crumbs = [
       { name: 'Accueil', url: SITE_URL + '/' },
-      productCategory ? { name: productCategory, url: `${SITE_URL}/categorie/${slugify(productCategory)}` } : null,
+      productCategory ? { name: productCategory, url: `${SITE_URL}/categorie/${slugify(productCategory)}/` } : null,
       { name: opts.productName || productNumref, url: url },
     ].filter(Boolean);
     const breadcrumbJson = {
@@ -154,7 +158,7 @@ async function main() {
   });
 
   const allProducts = products || [];
-  const sitemapUrls = [`${SITE_URL}/`, `${SITE_URL}/a-propos`, `${SITE_URL}/nous-joindre`];
+  const sitemapUrls = [`${SITE_URL}/`, `${SITE_URL}/a-propos/`, `${SITE_URL}/nous-joindre/`];
 
   const categories = [...new Set(allProducts.map((p) => p.category).filter(Boolean))];
   categories.forEach((cat) => {
@@ -163,7 +167,7 @@ async function main() {
     const title = `${cat} — ${SITE_NAME}`;
     const desc = `Découvrez notre sélection de ${cat.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison 25 $, offerte dès 200 $.`;
     writePage(path, buildMetaTags({ title, desc, path, type: 'website' }));
-    sitemapUrls.push(`${SITE_URL}${path}`);
+    sitemapUrls.push(`${SITE_URL}${ensureTrailingSlash(path)}`);
   });
 
   allProducts.forEach((p) => {
@@ -179,7 +183,7 @@ async function main() {
       productPrice: p.price, productNumref: p.numref, productFournisseur: p.fournisseur,
       productCategory: p.category, productTotalQt: p.total_qt, productName: p.description,
     }));
-    sitemapUrls.push(`${SITE_URL}${path}`);
+    sitemapUrls.push(`${SITE_URL}${ensureTrailingSlash(path)}`);
   });
 
   writePage('/a-propos', buildMetaTags({

@@ -132,6 +132,10 @@ function removeJsonLd(id) {
   if (el) el.remove();
 }
 
+function ensureTrailingSlash(path) {
+  return path.endsWith('/') ? path : path + '/';
+}
+
 function updateSEOForProduct(product) {
   const title = `${product.description || 'Produit'}${product.fournisseur ? ' — ' + product.fournisseur : ''} | ${SITE_NAME}`;
   const colors = (Array.isArray(product.colors) ? product.colors : []).map((c) => colorName(c)).filter(Boolean).join(', ');
@@ -140,7 +144,7 @@ function updateSEOForProduct(product) {
     ? `${product.description}${colors ? ', ' + colors : ''}${sizes ? ', ' + sizes : ''} — ${formatPrice(product.price)} chez ${SITE_NAME}, boutique de mode féminine à Alma. Réf. ${product.numref}.`
     : `Mode féminine à Alma — ${SITE_NAME}`;
   const slug = productSlug(product);
-  const url = `${SITE_URL}/produit/${slug}`;
+  const url = `${SITE_URL}/produit/${slug}/`;
   const coverImg = Array.isArray(product.images) && product.images.length > 0
     ? imgUrl(product.images[0])
     : `${SITE_URL}/assets/lockup-sombre.png`;
@@ -204,7 +208,7 @@ function updateSEOForProduct(product) {
 function updateSEOForCatalog(category) {
   const title = `${category} — ${SITE_NAME}`;
   const desc = `Découvrez notre sélection de ${category.toLowerCase()} chez ${SITE_NAME}, boutique de mode féminine à Alma, Lac-Saint-Jean. Livraison 25 $, offerte dès 200 $.`;
-  const url = `${SITE_URL}${categoryUrl(category)}`;
+  const url = `${SITE_URL}${ensureTrailingSlash(categoryUrl(category))}`;
 
   document.title = title;
   ensureMetaName('description', desc);
@@ -232,7 +236,7 @@ function updateSEOForCatalog(category) {
 }
 
 function updateSEOForPage(title, desc, path) {
-  const url = `${SITE_URL}${path}`;
+  const url = `${SITE_URL}${ensureTrailingSlash(path)}`;
   document.title = title;
   ensureMetaName('description', desc);
   document.querySelector('link[rel="canonical"]').href = url;
@@ -537,6 +541,8 @@ async function renderCurrentPage() {
   } else if (currentRoute.page === 'search') {
     if (searchEl) {
       searchEl.style.display = '';
+      const searchInput = $('#searchInput');
+      if (searchInput && currentRoute.query) searchInput.value = currentRoute.query;
       renderSearchResults(currentRoute.query);
     }
   } else if (currentRoute.page === 'about') {
@@ -570,7 +576,7 @@ async function renderCurrentPage() {
 /* ---------- Section « Nos 3 boutiques » ---------- */
 const BOUTIQUES = [
   { name: 'Le Mercier Alma', desc: 'Mercerie pour homme à Alma — chemises, costumes, polos et accessoires de marques sélectionnées, avec ajustements sur mesure en boutique.', link: 'https://lemercieralma.com', internal: false, logo: '/assets/lemercier-logo.jpg' },
-  { name: 'Attitude Sports', desc: 'Vêtements et chaussures de sport pour toute la famille — performance, confort et style au quotidien.', link: 'https://attitudesport.ca', internal: false, logo: '/assets/attitudesport-logo.png' },
+  { name: 'Attitude Sports', desc: 'Vêtements et chaussures de sport pour toute la famille — performance, confort et style au quotidien.', link: 'https://attitudesports.ca', internal: false, logo: '/assets/attitudesport-logo.png' },
 ];
 
 function renderBoutiquesSection() {
@@ -873,7 +879,7 @@ async function renderProductDetail() {
   const breadcrumb = $('#productBreadcrumb');
 
   if (!product) {
-    container.innerHTML = '<div class="loading-msg">Produit introuvable.</div>';
+    container.innerHTML = '<div class="pdp-not-found"><div class="loading-msg">Produit introuvable.</div><a href="/categorie/nouveautes" class="btn-outline" style="display:inline-block;margin-top:16px;padding:10px 24px;border-radius:999px;text-decoration:none">Voir les nouveautés</a></div>';
     breadcrumb.innerHTML = '<a href="/">Accueil</a> <span>/</span> <span>Produit introuvable</span>';
     return;
   }
@@ -1822,7 +1828,7 @@ function renderConfirmation(orderNumber) {
   el.innerHTML = `
     <div class="confirmation-box">
       <div class="surtitre">Merci !</div>
-      <h1>Votre commande a été reçue</h1>
+      <h1 class="page-title">Votre commande a été reçue</h1>
       <p>Nous vous remercions de votre confiance. Voici votre numéro de commande :</p>
       <div class="confirmation-order-num">${orderNumber}</div>
       <p class="confirmation-email-note">Un courriel de confirmation vient d'être envoyé à votre adresse.</p>
@@ -1871,10 +1877,8 @@ function setupEvents() {
     }, 1500);
     openCartDrawer();
   });
-  document.querySelectorAll('.icons a').forEach((a) => {
-    if (a.textContent.includes('Panier')) {
-      a.addEventListener('click', (e) => { e.preventDefault(); openCartDrawer(); });
-    }
+  document.querySelectorAll('[data-cart-link]').forEach((a) => {
+    a.addEventListener('click', (e) => { e.preventDefault(); openCartDrawer(); });
   });
 
   $('#loadMoreBtn')?.addEventListener('click', () => {

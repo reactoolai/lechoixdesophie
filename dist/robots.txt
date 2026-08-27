@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin
+Disallow: /commande
+
+Sitemap: https://lechoixdesophie.com/sitemap.xml

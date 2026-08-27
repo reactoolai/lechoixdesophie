@@ -154,7 +154,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 .breadcrumb a { color: var(--gris-clair); }
 .breadcrumb a:hover { color: var(--or-fonce); }
 .breadcrumb span { margin: 0 6px; }
-#catalogTitle { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 38px; margin: 0; }
+#catalogTitle, .page-title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 38px; margin: 0; }
 .catalog-count { font-size: 14px; color: var(--gris); font-weight: 300; margin: 6px 0 0; }
 
 .catalog-layout { display: grid; grid-template-columns: 260px 1fr; gap: 48px; padding-top: 40px; padding-bottom: 80px; }
@@ -241,7 +241,7 @@ footer { background: var(--noir); color: #CFC8B8; }
   .news-form input { border-right: 1px solid #D8CDB4; }
   .foot { grid-template-columns: 1fr; gap: 36px; }
   .foot-bottom .wrap { flex-direction: column; gap: 10px; text-align: center; justify-content: center; }
-  #catalogTitle { font-size: 28px; }
+  #catalogTitle, .page-title { font-size: 28px; }
   .catalog-layout { grid-template-columns: 1fr; gap: 0; }
   .filters { position: fixed; top: 0; left: 0; bottom: 0; width: 300px; background: var(--blanc); z-index: 200; padding: 28px 24px; transform: translateX(-100%); transition: transform .3s ease; overflow-y: auto; box-shadow: 2px 0 24px rgba(0,0,0,.15); }
   .filters.open { transform: translateX(0); }
@@ -400,7 +400,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 #page-confirmation { padding: 60px 40px 80px; }
 .confirmation-box { max-width: 640px; margin: 0 auto; text-align: center; }
 .confirmation-box .surtitre { margin-bottom: 16px; }
-.confirmation-box h1 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 38px; margin: 0 0 16px; }
+.confirmation-box .page-title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 38px; margin: 0 0 16px; }
 .confirmation-box p { font-size: 15px; color: var(--gris); font-weight: 300; line-height: 1.6; margin: 0 0 12px; }
 .confirmation-order-num { font-size: 18px; font-weight: 500; color: var(--or-fonce); margin: 16px 0 24px; }
 .confirmation-summary { text-align: left; background: var(--fond-clair); border-radius: 8px; padding: 28px; margin: 28px 0; }
@@ -440,7 +440,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 
 /* ====== PAGES À PROPOS & NOUS JOINDRE ====== */
 .about-page, .contact-page { max-width: 900px; margin: 0 auto; }
-.about-page h1, .contact-page h1 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 42px; margin: 0 0 16px; }
+.about-page .page-title, .contact-page .page-title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 42px; margin: 0 0 16px; }
 .about-lead { font-size: 18px; line-height: 1.6; color: var(--gris); font-weight: 300; margin-bottom: 40px; }
 .about-content { display: grid; grid-template-columns: 1.5fr 1fr; gap: 48px; align-items: start; }
 .about-text h2 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 26px; margin: 0 0 12px; }
@@ -469,7 +469,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 .about-hero img { width: 100%; height: 100%; object-fit: cover; }
 .about-hero-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(20,20,22,.35); }
 .about-hero-overlay .surtitre { color: var(--or); margin-bottom: 12px; }
-.about-hero-overlay h1 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 52px; color: var(--blanc); margin: 0; }
+.about-hero-overlay .page-title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 52px; color: var(--blanc); margin: 0; }
 
 .about-sections { padding: 64px 40px 80px; }
 .about-row { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; margin-bottom: 80px; }
@@ -490,7 +490,7 @@ footer { background: var(--noir); color: #CFC8B8; }
 
 @media (max-width: 780px) {
   .about-hero { height: 300px; }
-  .about-hero-overlay h1 { font-size: 36px; }
+  .about-hero-overlay .page-title { font-size: 36px; }
   .about-row { grid-template-columns: 1fr; gap: 32px; margin-bottom: 56px; }
   .about-row.reverse .about-row-img { order: 0; }
   .about-row-img { height: 280px; }
